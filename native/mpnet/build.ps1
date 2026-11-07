@@ -13,7 +13,7 @@ $vcvars = Join-Path $vs "VC\Auxiliary\Build\vcvars64.bat"
 
 $src = Join-Path $here "mpnet.cpp"
 $cmd = "`"$vcvars`" >nul && cl /nologo /std:c++17 /O2 /MT /EHsc /W4 /permissive- /LD `"$src`" " +
-       "/Fo`"$out\\`" /Fe`"$out\mpnet.dll`" /link /NOLOGO kernel32.lib"
+       "/Fo`"$out\\`" /Fe`"$out\mpnet.dll`" /link /NOLOGO kernel32.lib user32.lib"
 cmd /c $cmd
 if ($LASTEXITCODE -ne 0) { throw "falha na compilacao ($LASTEXITCODE)" }
 Get-Item (Join-Path $out "mpnet.dll") | Select-Object FullName, Length, LastWriteTime

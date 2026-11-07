@@ -8,7 +8,7 @@
 // Protocolo dos pipes (little-endian):
 //   quadro      = u32 tamanho, bytes
 //   comando     = u8 op, argumentos
-//   resposta    = u32 tamanho total, depois N x (u32 tamanho, evento)
+//   resposta    = u32 tamanho total, u64 relogio em microssegundos, depois N x (u32 tamanho, evento)
 //   evento      = u8 tipo, dados
 // Os codigos estao em docs/08-mpnet.md.
 
@@ -32,7 +32,7 @@ typedef uint64_t u64;
 typedef int32_t HSteamUser;
 typedef u64 SteamAPICall_t;
 
-static const u32 MPNET_VERSION = 1;
+static const u32 MPNET_VERSION = 2;
 
 // ---------------------------------------------------------------- log
 
@@ -233,6 +233,7 @@ enum : u8 {
     EV_JOIN_REQUESTED = 8,
     EV_SESSION_FAIL = 9,
     EV_SESSION_REQUEST = 10,
+    EV_PEER_STATE = 11,
 };
 
 enum : u8 {
@@ -244,7 +245,66 @@ enum : u8 {
     OP_SEND = 6,
     OP_SET_LOBBY_DATA = 7,
     OP_CLOSE_PEER = 8,
+    OP_SET_TITLE = 9,
+    OP_PEER_STATE = 10,
 };
+
+static u64 now_us() {
+    static LARGE_INTEGER freq = [] { LARGE_INTEGER f; QueryPerformanceFrequency(&f); return f; }();
+    LARGE_INTEGER c;
+    QueryPerformanceCounter(&c);
+    return (u64)(c.QuadPart / freq.QuadPart) * 1000000ull + (u64)((c.QuadPart % freq.QuadPart) * 1000000ull / freq.QuadPart);
+}
+
+static HWND g_window = nullptr;
+static BOOL CALLBACK find_window(HWND h, LPARAM) {
+    DWORD pid = 0;
+    GetWindowThreadProcessId(h, &pid);
+    if (pid != GetCurrentProcessId() || !IsWindowVisible(h) || GetWindow(h, GW_OWNER)) return TRUE;
+    char cls[64] = {0};
+    GetClassNameA(h, cls, sizeof cls);
+    if (strcmp(cls, "UnrealWindow") == 0) { g_window = h; return FALSE; }
+    return TRUE;
+}
+// SetWindowTextW numa janela de outra thread espera a thread dona processar a mensagem.
+// A thread do jogo fica parada esperando a resposta do pipe, entao chamar daqui travaria
+// as duas. O titulo e aplicado por uma thread propria, que pode esperar sem segurar ninguem.
+static std::mutex g_title_mutex;
+static std::wstring g_title_pending;
+static bool g_title_dirty = false;
+static HANDLE g_title_event = nullptr;
+
+static DWORD WINAPI title_worker(LPVOID) {
+    for (;;) {
+        WaitForSingleObject(g_title_event, INFINITE);
+        std::wstring t;
+        {
+            std::lock_guard<std::mutex> lock(g_title_mutex);
+            if (!g_title_dirty) continue;
+            t = g_title_pending;
+            g_title_dirty = false;
+        }
+        if (!g_window || !IsWindow(g_window)) { g_window = nullptr; EnumWindows(find_window, 0); }
+        if (g_window) SetWindowTextW(g_window, t.c_str());
+    }
+}
+
+static void set_title(const std::string& utf8) {
+    int n = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), (int)utf8.size(), nullptr, 0);
+    std::wstring w(n, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), (int)utf8.size(), &w[0], n);
+    {
+        std::lock_guard<std::mutex> lock(g_title_mutex);
+        g_title_pending = w;
+        g_title_dirty = true;
+    }
+    if (!g_title_event) {
+        g_title_event = CreateEventA(nullptr, FALSE, FALSE, nullptr);
+        HANDLE t = CreateThread(nullptr, 0, title_worker, nullptr, 0, nullptr);
+        if (t) CloseHandle(t);
+    }
+    SetEvent(g_title_event);
+}
 
 struct Writer {
     std::string s;
@@ -463,6 +523,25 @@ static void handle_command(const std::string& frame, bool& is_poll) {
             if (g_accepted[i] == id) { g_accepted.erase(g_accepted.begin() + i); break; }
         break;
     }
+    case OP_SET_TITLE:
+        set_title(r.rest());
+        break;
+    case OP_PEER_STATE:
+        for (u64 id : g_accepted) {
+            P2PSessionState_t s{};
+            if (!p_SteamAPI_ISteamNetworking_GetP2PSessionState(g_net, id, &s)) continue;
+            push_event(Writer()
+                           .u8_(EV_PEER_STATE)
+                           .u64_(id)
+                           .u8_(s.m_bConnectionActive)
+                           .u8_(s.m_bConnecting)
+                           .u8_(s.m_eP2PSessionError)
+                           .u8_(s.m_bUsingRelay)
+                           .u32_((u32)s.m_nBytesQueuedForSend)
+                           .u32_((u32)s.m_nPacketsQueuedForSend)
+                           .s);
+        }
+        break;
     default:
         push_error("comando desconhecido " + std::to_string(op));
     }
@@ -501,6 +580,7 @@ static std::string build_reply() {
         evs.swap(g_events);
     }
     Writer w;
+    w.u64_(now_us());
     for (auto& e : evs) { w.u32_((u32)e.size()); w.bytes(e.data(), e.size()); }
     return w.s;
 }
@@ -577,6 +657,7 @@ static DWORD WINAPI worker(LPVOID) {
                     std::deque<std::string> evs;
                     { std::lock_guard<std::mutex> lock(g_ev_mutex); evs.swap(g_events); }
                     Writer w;
+                    w.u64_(now_us());
                     for (auto& e : evs) { w.u32_((u32)e.size()); w.bytes(e.data(), e.size()); }
                     return w.s;
                 }();

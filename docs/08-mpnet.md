@@ -57,6 +57,7 @@ SteamIDs são inteiros Lua de 64 bits.
 | 8 | `JOIN_REQUESTED` | `lobby`, `friend` (0 quando veio da linha de comando) |
 | 9 | `SESSION_FAIL` | `peer`, `error` |
 | 10 | `SESSION_REQUEST` | `peer` |
+| 11 | `PEER_STATE` | `peer`, `active`, `connecting`, `error`, `relay`, `bytes_queued`, `packets_queued` |
 
 ## Comandos no pipe
 
@@ -72,8 +73,14 @@ Quadro: `u32 tamanho` e o conteúdo. Primeiro byte é o código.
 | 6 | `SEND` | `u64 peer`, `u8 tipo`, `u8 canal`, bytes |
 | 7 | `SET_LOBBY_DATA` | `chave\0valor` |
 | 8 | `CLOSE_PEER` | `u64 peer` |
+| 9 | `SET_TITLE` | texto UTF-8 do título da janela |
+| 10 | `PEER_STATE` | nenhum; gera um `PEER_STATE` por par aceito |
 
-Resposta ao `POLL`: `u32 tamanho total`, depois cada evento como `u32 tamanho` e o conteúdo.
+Resposta ao `POLL`: `u32 tamanho total`, `u64 relógio em microssegundos`, depois cada evento como `u32 tamanho` e o conteúdo. O relógio vira `mpnet.now_us` no Lua.
+
+## Regra de ouro: a thread do pipe nunca espera a thread do jogo
+
+Durante o `POLL`, a thread do jogo está parada esperando a resposta. Qualquer chamada na DLL que dependa da thread do jogo trava os dois. Aconteceu na versão 2 com `SetWindowTextW`, que manda uma mensagem para a janela e espera a thread dona processar. O jogo congelou no segundo tick. A correção foi aplicar o título numa thread própria. Toda chamada nova da DLL deve ser conferida contra essa regra.
 
 ## Compilar e testar
 
@@ -103,6 +110,31 @@ Data: 2026-11-07, build Steam 23218978.
 Duas execuções seguidas deram o mesmo resultado.
 
 O tempo de ida e volta do loopback foi de cerca de 870 ms no primeiro pacote. Isso inclui a abertura da sessão e a granularidade do laço de teste, que rodou a cerca de 24 ticks por segundo. Não é medida de rede. RTT real exige duas máquinas.
+
+## Pacote de teste para jogadores: MpPing 0.1
+
+O mod `mod/MpPing` testa a conexão entre amigos. F8 cria a sala e abre o convite da Steam, e quem aceita entra sozinho. Todos medem ping entre si, quatro vezes por segundo no canal não confiável e a cada 2 s no confiável. Depois de 15 s, cada um envia 10 s de tráfego a 120 pacotes de 1,1 KB por segundo, cerca de 1 Mbit/s. O status vai para o título da janela, e o relatório para `%LOCALAPPDATA%\HydroneerMP\relatorio.txt`.
+
+Montagem:
+
+```
+powershell -ExecutionPolicy Bypass -File tools\build-package.ps1 -Ue4ssZip <UE4SS_v3.0.1-1217-g4fb9b615.zip>
+```
+
+O pacote em `dist/` tem `Instalar.bat`, `Desinstalar.bat`, `Abrir relatorio.bat` e `LEIA-ME.txt`. O instalador acha o jogo pela Steam, confere a versão, faz backup de qualquer arquivo que já exista e guarda a lista do que instalou. Se o UE4SS já estiver instalado por outro mod, só adiciona o MpPing.
+
+Autoteste numa instância, com a própria conta como par:
+
+| Medida | Resultado |
+|---|---|
+| Laço | 60 ticks por segundo, por frame |
+| Ping em regime | 33 ms, o equivalente a 2 frames de laço |
+| Primeiro ping | 945 ms, abertura da sessão |
+| Banda | 1.198 de 1.200 pacotes, 1 Mbit/s por 10 s |
+
+Teste do pacote numa cópia limpa do jogo: o zip extraído instalou 9 arquivos, o jogo subiu com o mod e o título certo, e a desinstalação deixou a pasta idêntica à original.
+
+Não testado ainda: apertar F8 de verdade, o convite chegando a um amigo e a rota pelo relay da Steam. É exatamente o que o pacote serve para medir.
 
 ## O que ainda não foi testado
 

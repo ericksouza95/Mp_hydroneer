@@ -14,10 +14,15 @@ local M = {}
 M.UNRELIABLE, M.UNRELIABLE_NODELAY, M.RELIABLE, M.RELIABLE_BUFFERED = 0, 1, 2, 3
 
 local OP_POLL, OP_HOST, OP_JOIN, OP_LEAVE, OP_INVITE, OP_SEND, OP_SET_LOBBY_DATA, OP_CLOSE_PEER = 1, 2, 3, 4, 5, 6, 7, 8
+local OP_SET_TITLE, OP_PEER_STATE = 9, 10
 M.EV = {
     HELLO = 1, ERROR = 2, LOBBY_CREATED = 3, LOBBY_ENTERED = 4, MEMBER_JOINED = 5,
     MEMBER_LEFT = 6, PACKET = 7, JOIN_REQUESTED = 8, SESSION_FAIL = 9, SESSION_REQUEST = 10,
+    PEER_STATE = 11,
 }
+
+-- Relogio da DLL em microssegundos, atualizado a cada poll().
+M.now_us = 0
 
 local token, c2s, s2c, loaded, err
 local queue = {}
@@ -66,6 +71,8 @@ function M.leave() push(string.pack("<B", OP_LEAVE)) end
 function M.invite() push(string.pack("<B", OP_INVITE)) end
 function M.close_peer(peer) push(string.pack("<Bi8", OP_CLOSE_PEER, peer)) end
 function M.set_lobby_data(k, v) push(string.pack("<B", OP_SET_LOBBY_DATA) .. k .. "\0" .. v) end
+function M.set_title(text) push(string.pack("<B", OP_SET_TITLE) .. text) end
+function M.peer_state() push(string.pack("<B", OP_PEER_STATE)) end
 function M.send(peer, bytes, send_type, channel)
     push(string.pack("<Bi8BB", OP_SEND, peer, send_type or M.RELIABLE, channel or 0) .. bytes)
 end
@@ -93,6 +100,10 @@ local function decode(e)
         ev.lobby, ev.friend = string.unpack("<i8i8", e, p)
     elseif t == M.EV.SESSION_FAIL then
         ev.peer, ev.error = string.unpack("<i8B", e, p)
+    elseif t == M.EV.PEER_STATE then
+        local active, connecting, err, relay
+        ev.peer, active, connecting, err, relay, ev.bytes_queued, ev.packets_queued = string.unpack("<i8BBBBI4I4", e, p)
+        ev.active, ev.connecting, ev.error, ev.relay = active ~= 0, connecting ~= 0, err, relay ~= 0
     end
     return ev
 end
@@ -110,7 +121,8 @@ function M.poll()
     local events = {}
     if total > 0 then
         local body = s2c:read(total)
-        local p = 1
+        M.now_us = string.unpack("<i8", body, 1)
+        local p = 9
         while p <= #body do
             local len
             len, p = string.unpack("<I4", body, p)

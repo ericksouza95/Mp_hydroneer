@@ -1,0 +1,3 @@
+[submodule "vendor/coop-anything"]
+	path = vendor/coop-anything
+	url = https://github.com/cranebeaker/coop-anything.git

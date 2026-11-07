@@ -2,6 +2,8 @@
 
 ## Marco 0. Spike de verificação
 
+**Status: concluído em 2026-11-07, com dois itens adiados.** Resultados em [07-spike.md](07-spike.md). O item 6 perdeu relevância e o item 8 foi para o marco 2.
+
 Objetivo: transformar suposições em fatos antes de escrever protocolo.
 
 1. Instalar UE4SS na cópia do jogo, fora do repositório. Confirmar que carrega no build 23218978.

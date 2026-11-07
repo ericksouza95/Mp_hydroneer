@@ -32,7 +32,8 @@ O host simula o mundo inteiro, inclusive um pawn oculto para cada amigo, usando 
 4. [Protocolo](docs/04-protocolo.md): rascunho das mensagens.
 5. [Roadmap](docs/05-roadmap.md): spike de verificação e marcos.
 6. [O que usamos do coop-anything](docs/06-coop-anything.md): ferramentas de teste e playbook adotados, e o que fica de fora.
-7. [Fontes](docs/99-fontes.md).
+7. [Spike de verificação](docs/07-spike.md): o que foi medido dentro do jogo, com UE4SS.
+8. [Fontes](docs/99-fontes.md).
 
 ## Regras do repositório
 

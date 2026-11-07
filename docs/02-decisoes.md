@@ -86,9 +86,27 @@ Formato: número, data, decisão, motivo, consequências. Decisões podem ser re
 
 **Consequências.** Nossos scripts de QA ficam em `qa/` e falam com o coop-anything por adaptadores. O commit usado é fixado. Nenhuma cópia do jogo é lançada sem o lock de slot.
 
+## D14. Jogadores extras entram pelo caminho do Remote Play (2026-11-07)
+
+**Decisão.** No host, cada cliente vira um jogador criado por `GM_Hydroneer_C:AddRemotePlayer({SessionID = N})`, com `N` reservado pelo mod. Sai por `RemovePlayer`.
+
+**Motivo.** O spike mostrou que `AddLocalPlayer` aceita só um jogador extra, enquanto o caminho de Remote Play aceitou três, chegando a 4 no total, com custo de cerca de 5 % de frame no host.
+
+**Consequências.** O mod precisa evitar que o jogo tente ler input do Remote Play da Steam para essas sessões falsas. A verificar no marco 2.
+
+## D15. Física em repouso não trafega (2026-11-07)
+
+**Decisão.** O fluxo `XFORM` acompanha só itens que estão simulando física. A detecção usa o próprio estado do jogo, que trava a física de itens assentados.
+
+**Motivo.** Num mundo novo, nenhum dos 557 itens simulava física depois de assentar.
+
 ## Pendentes
 
+- **Transporte Steam: como chamar a Steam.** O spike mostrou que a SteamID do SteamCore chega vazia ao Lua, então P2P, lobby e convite não funcionam pela reflexão. Opções:
+  1. **DLL nativa companheira, recomendada.** Uma DLL nossa em C++, carregada pelo Lua com `package.loadlib`, chama a API flat da `steam_api64.dll` do próprio jogo: P2P legado, lobby e callbacks. Conversa com o Lua por um pipe nomeado aberto com `io.open`, num ciclo de pedido e resposta por tick. Não exige compilar o UE4SS. Mantém D02 no protocolo e no app id.
+  2. **Mod C++ do UE4SS.** Mesma chamada direta à Steam, com acesso nativo aos objetos do jogo. Exige compilar o UE4SS a partir do código-fonte, que depende de conta GitHub vinculada à Epic, e manter o build a cada versão do UE4SS.
+  3. **Ponte Blueprint via modkit.** O Blueprint enxerga a SteamID normalmente. Exige o editor Unreal 4.26 e que o modkit traga as classes do SteamCore, o que não foi verificado.
+
 - **Licença.** Precisa ser escolhida antes de receber contribuição externa. Sugestão: MIT, igual ao UE4SS e ao coop-anything.
-- **Ponte Blueprint ou C++.** Depende do spike: o modkit oficial precisa expor as classes do SteamCore para o mod de ponte compilar em Blueprint. Se não expuser, a ponte vira mod C++ do UE4SS.
-- **Whitelist de campos por classe.** Depende do dump das classes no spike.
+- **Whitelist de campos por classe.** Primeira versão em `07-spike.md`, tabela de classes e funções.
 - **Idioma da documentação pública.** Português agora. Tradução para inglês quando houver algo jogável.

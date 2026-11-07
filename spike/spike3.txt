@@ -1,0 +1,31 @@
+12:43:34 ==== fase 3 inicio ====
+12:43:34 package=table loadlib=function require=function cpath=E:\hydroneer-qa\inst0\Mining\Binaries\Win64\?.dll;E:\hydroneer-qa\inst0\Mining\Binaries\Win64\..\lib\lua\5.4\?.dll;E:\hydroneer-qa\inst0\Mining\Binaries\Win64\loadall.dll;.\?.dll;E:/hydroneer-qa/inst0/Mining/Binaries/Win64/ue4ss/Mods/MpSpike/Scripts/?.dll;E:/hydroneer-qa/inst0/Mining/Binaries/Win64/ue4ss/Mods/MpSpike/?/?.dll
+12:43:49 GM:NewGame() OK: nil
+12:43:50 EM JOGO apos 1 s
+12:44:05 console 't.MaxFPS 0' OK: nil
+12:44:05 console 'r.VSync 0' OK: nil
+12:44:07 INICIO: controladores=1 localplayers=1
+12:44:07   pc1 BP_GameController_C_2147481736 pawn=BP_Character_HydroGuy_C_2147481717
+12:44:07   GI.SessionIDs=[0] HasLocalPlayer=false RemotePlayStarted=false
+12:44:13 1 jogador, sem limite: delta medio 10.84 ms (92 fps), pior 18.44 ms, 100 amostras
+12:44:13 AddRemotePlayer SessionID=101 OK: nil
+12:44:16 apos remoto 101: controladores=2 localplayers=2
+12:44:16   pc1 BP_GameController_C_2147481736 pawn=BP_Character_HydroGuy_C_2147481717
+12:44:16   pc2 BP_GameController_C_2147478790 pawn=BP_Character_HydroGuy_C_2147478772
+12:44:16   GI.SessionIDs=[0,101] HasLocalPlayer=false RemotePlayStarted=true
+12:44:16 AddRemotePlayer SessionID=102 OK: nil
+12:44:19 apos remoto 102: controladores=3 localplayers=3
+12:44:19   pc1 BP_GameController_C_2147481736 pawn=BP_Character_HydroGuy_C_2147481717
+12:44:19   pc2 BP_GameController_C_2147478790 pawn=BP_Character_HydroGuy_C_2147478772
+12:44:19   pc3 BP_GameController_C_2147478686 pawn=BP_Character_HydroGuy_C_2147478668
+12:44:19   GI.SessionIDs=[0,101,102] HasLocalPlayer=false RemotePlayStarted=true
+12:44:19 AddRemotePlayer SessionID=103 OK: nil
+12:44:22 apos remoto 103: controladores=4 localplayers=4
+12:44:22   pc1 BP_GameController_C_2147481736 pawn=BP_Character_HydroGuy_C_2147481717
+12:44:22   pc2 BP_GameController_C_2147478790 pawn=BP_Character_HydroGuy_C_2147478772
+12:44:22   pc3 BP_GameController_C_2147478686 pawn=BP_Character_HydroGuy_C_2147478668
+12:44:22   pc4 BP_GameController_C_2147478610 pawn=BP_Character_HydroGuy_C_2147478592
+12:44:22   GI.SessionIDs=[0,101,102,103] HasLocalPlayer=false RemotePlayStarted=true
+12:44:22 SetForceDisableSplitscreen OK: nil
+12:44:30 com jogadores extras, split desligado: delta medio 11.42 ms (88 fps), pior 16.88 ms, 100 amostras
+12:44:30 FASE3_CONCLUIDA

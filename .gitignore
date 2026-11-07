@@ -1,0 +1,24 @@
+# Nunca commitar arquivos do jogo, saves ou binarios de terceiros
+*.pak
+*.sav
+*.exe
+*.dll
+*.so
+*.zip
+*.7z
+UE4SS/
+ue4ss/
+dist/
+build/out/
+run/
+Saved/
+
+# Ferramentas
+.vs/
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+*.log
+Thumbs.db
+desktop.ini

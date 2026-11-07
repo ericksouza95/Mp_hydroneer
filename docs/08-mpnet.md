@@ -134,7 +134,32 @@ Autoteste numa instância, com a própria conta como par:
 
 Teste do pacote numa cópia limpa do jogo: o zip extraído instalou 9 arquivos, o jogo subiu com o mod e o título certo, e a desinstalação deixou a pasta idêntica à original.
 
-Não testado ainda: apertar F8 de verdade, o convite chegando a um amigo e a rota pelo relay da Steam. É exatamente o que o pacote serve para medir.
+### Primeiro teste real entre dois PCs (2026-11-07)
+
+Dois jogadores, cada um na sua casa, com o pacote 0.1 e o build Steam 23218978. O host apertou F8 e convidou pelo overlay. O amigo aceitou o convite e entrou sozinho. A sala ficou aberta por cerca de 33 s depois da entrada.
+
+O relatório 0.1 registra a média acumulada, que fica inflada pelos pings da abertura da sessão. A tabela usa a média de cada janela de 5 s, calculada a partir dos totais acumulados.
+
+| Medida | Host | Amigo |
+|---|---|---|
+| Ping em regime, por janela de 5 s | 82 a 89 ms | 83 a 88 ms |
+| Banda recebida, 10 s a 120 pacotes/s | 1.198/1.200, 1.059 kbit/s | 1.196/1.200, 1.057 kbit/s |
+| Perda de ping em regime | 0% | 0% |
+| Rota P2P | direta | direta |
+| Abertura da sessão P2P | cerca de 5 s, primeiros pings até 5,2 s | igual |
+| Laço do jogo | 58 a 60 ticks/s | 57 a 60 ticks/s |
+
+Leitura:
+
+- O ping medido inclui cerca de 33 ms do laço do jogo, visto no autoteste local. A rede entre as casas fica perto de 50 ms.
+- O ping não mudou durante o teste de banda.
+- A sessão P2P leva uns 5 s para abrir nos dois lados. O protocolo precisa esperar a sessão confirmar antes de mandar estado do mundo.
+
+Bug encontrado: ao receber `JOIN_REQUESTED` para a sala em que já estava, o mod saiu e tentou entrar de novo. Como o host saiu no mesmo instante, a entrada falhou com resposta 2, sala inexistente. A correção é ignorar convite para a sala atual. A causa do segundo convite não foi identificada; a hipótese mais provável é um segundo clique no convite antigo do chat.
+
+Melhorias para o 0.2: ping por janela, sem a abertura da sessão; FPS de cada lado junto com o ping; a correção acima.
+
+Não testado ainda: rota pelo relay da Steam e sessões longas.
 
 ## O que ainda não foi testado
 

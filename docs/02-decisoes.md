@@ -70,6 +70,22 @@ Formato: número, data, decisão, motivo, consequências. Decisões podem ser re
 
 **Decisão.** Tudo documentado em português neste repositório. Nenhum arquivo do jogo commitado.
 
+## D12. Transporte duplo: UDP em loopback para testes, Steam para jogar (2026-11-07)
+
+**Decisão.** A ponte de transporte tem dois modos escolhidos por configuração: `udp` em localhost e `steam` via SteamCore. O protocolo é o mesmo nos dois.
+
+**Motivo.** Um PC só roda uma conta Steam, então duas cópias do jogo numa máquina não conseguem falar pela Steam. O modo UDP permite testar 2 a 4 cópias num PC e colocar o relay de caos do coop-anything no meio.
+
+**Consequências.** A ponte precisa de uma abstração de peer que esconda se o endereço é um SteamID ou um par ip e porta. Nenhum teste automatizado depende da Steam.
+
+## D13. Adotar as ferramentas de teste e o playbook do coop-anything (2026-11-07)
+
+**Decisão.** Usar o playbook como checklist, e as ferramentas `gameslot`, `gamepool`, `chaos`, `animcheck`, `scenarios` e `bots` nos marcos indicados em `06-coop-anything.md`. `flight` entra quando houver desync para caçar. `ownership`, `fuzz`, `fakeworld`, `bridge` e `hotreload` ficam de fora por serem C++ ou por não se aplicarem a autoridade só do host.
+
+**Motivo.** São ferramentas prontas, MIT, Python sem dependências, generalizadas de um projeto que já passou pelos mesmos problemas. Reescrever seria desperdício.
+
+**Consequências.** Nossos scripts de QA ficam em `qa/` e falam com o coop-anything por adaptadores. O commit usado é fixado. Nenhuma cópia do jogo é lançada sem o lock de slot.
+
 ## Pendentes
 
 - **Licença.** Precisa ser escolhida antes de receber contribuição externa. Sugestão: MIT, igual ao UE4SS e ao coop-anything.

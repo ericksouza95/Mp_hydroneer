@@ -31,7 +31,8 @@ O host simula o mundo inteiro, inclusive um pawn oculto para cada amigo, usando 
 3. [Arquitetura](docs/03-arquitetura.md): topologia, slots, matriz de sincronização, canais, late join.
 4. [Protocolo](docs/04-protocolo.md): rascunho das mensagens.
 5. [Roadmap](docs/05-roadmap.md): spike de verificação e marcos.
-6. [Fontes](docs/99-fontes.md).
+6. [O que usamos do coop-anything](docs/06-coop-anything.md): ferramentas de teste e playbook adotados, e o que fica de fora.
+7. [Fontes](docs/99-fontes.md).
 
 ## Regras do repositório
 

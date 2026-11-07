@@ -17,21 +17,27 @@ Saída do spike: atualização de `02-decisoes.md` nos pendentes, whitelist inic
 
 ## Marco 1. Ponte de transporte
 
+- Modo `udp` em loopback e modo `steam` via SteamCore, mesmo protocolo.
 - Lobby só por amigos, convite pelo overlay, sessão P2P aceita, ping e pong nos dois canais.
-- Duas instâncias do jogo no mesmo PC, depois duas máquinas reais.
-- Medição de RTT e perda pelo relay.
+- `qa/gamepool.json` para 2 a 4 cópias do Hydroneer por hardlink, com saves isolados, lançadas pelo `gameslot`.
+- Relay `chaos` entre as cópias locais, perfil `bad_wifi`.
+- Duas instâncias no mesmo PC, depois duas máquinas reais pela Steam.
+- Medição de RTT e perda pelo relay da Steam.
 
 ## Marco 2. Andar junto
 
 - Slots, puppets, `POSE` e `PAWNS`.
 - Pawn oculto no host seguindo a pose do cliente.
 - Verificação de versão no join.
+- Probe JSONL em Lua e perfil do esqueleto do Hydroneer para o `animcheck`. Critério: zero glitches e erro de pose dentro da tolerância.
 
 ## Marco 3. Terreno e itens
 
 - `TERRAIN` por hooks nas ferramentas de voxel.
 - Ids de entidade, `SPAWN`, `DESTROY`, `XFORM`, `SLEEP`, `CARRY`.
 - Reconciliação por snapshot em jogo novo.
+- Adaptador do Hydroneer para `bots` e `scenarios`: corrida de pickup, handoff de carregar, save e load com rejoin.
+- Gravador `.cofr` em Lua para o `flight` assim que o primeiro desync aparecer.
 
 ## Marco 4. Loop básico completo
 

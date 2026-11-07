@@ -49,11 +49,11 @@ O playbook de Steam afirma: um PC só roda uma conta Steam, então não dá para
 
 ## Como referenciar
 
-Sem submódulo por enquanto. As ferramentas são Python 3 sem dependências, então rodam direto de um clone ao lado:
+Submódulo em `vendor/coop-anything`, fixado no commit `a71be2c`. As ferramentas são Python 3 sem dependências:
 
 ```
-git clone --depth 1 https://github.com/cranebeaker/coop-anything.git ../coop-anything
-python -I ../coop-anything/tools/test_all.py
+git submodule update --init
+python -I vendor/coop-anything/tools/test_all.py
 ```
 
-Quando os primeiros scripts de QA entrarem no repositório, fixar o commit do coop-anything em `qa/COOP_ANYTHING_COMMIT` e usar o submódulo em `vendor/coop-anything`.
+Atualizar o commit fixado é uma decisão explícita, registrada em `02-decisoes.md`.

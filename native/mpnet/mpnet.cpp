@@ -11,28 +11,23 @@
 //   resposta    = u32 tamanho total, u64 relogio em microssegundos, depois N x (u32 tamanho, evento)
 //   evento      = u8 tipo, dados
 // Os codigos estao em docs/08-mpnet.md.
+//
+// Transporte: Steam por padrao. Se a linha 2 do mpnet.token pedir "udp host <porta>" ou
+// "udp client <ip>:<porta>", a DLL usa UDP local (mpnet_udp.cpp) e nao toca na Steam.
 
 #define WIN32_LEAN_AND_MEAN
 #define _CRT_SECURE_NO_WARNINGS
-#include <windows.h>
+#include "mpnet_common.h"
 
 #include <atomic>
 #include <cstdarg>
-#include <cstdint>
 #include <cstdio>
-#include <cstring>
 #include <deque>
 #include <mutex>
-#include <string>
 #include <vector>
 
-typedef uint8_t u8;
-typedef uint32_t u32;
-typedef uint64_t u64;
 typedef int32_t HSteamUser;
 typedef u64 SteamAPICall_t;
-
-static const u32 MPNET_VERSION = 2;
 
 // ---------------------------------------------------------------- log
 
@@ -40,7 +35,7 @@ static char g_dir[MAX_PATH];
 static FILE* g_log = nullptr;
 static std::mutex g_log_mutex;
 
-static void logf(const char* fmt, ...) {
+void logf(const char* fmt, ...) {
     std::lock_guard<std::mutex> lock(g_log_mutex);
     if (!g_log) return;
     SYSTEMTIME t;
@@ -221,35 +216,9 @@ static bool load_steam(std::string& err) {
 }
 
 // ---------------------------------------------------------------- eventos
+// Codigos de evento e comando ficam em mpnet_common.h.
 
-enum : u8 {
-    EV_HELLO = 1,
-    EV_ERROR = 2,
-    EV_LOBBY_CREATED = 3,
-    EV_LOBBY_ENTERED = 4,
-    EV_MEMBER_JOINED = 5,
-    EV_MEMBER_LEFT = 6,
-    EV_PACKET = 7,
-    EV_JOIN_REQUESTED = 8,
-    EV_SESSION_FAIL = 9,
-    EV_SESSION_REQUEST = 10,
-    EV_PEER_STATE = 11,
-};
-
-enum : u8 {
-    OP_POLL = 1,
-    OP_HOST = 2,
-    OP_JOIN = 3,
-    OP_LEAVE = 4,
-    OP_INVITE = 5,
-    OP_SEND = 6,
-    OP_SET_LOBBY_DATA = 7,
-    OP_CLOSE_PEER = 8,
-    OP_SET_TITLE = 9,
-    OP_PEER_STATE = 10,
-};
-
-static u64 now_us() {
+u64 now_us() {
     static LARGE_INTEGER freq = [] { LARGE_INTEGER f; QueryPerformanceFrequency(&f); return f; }();
     LARGE_INTEGER c;
     QueryPerformanceCounter(&c);
@@ -306,23 +275,14 @@ static void set_title(const std::string& utf8) {
     SetEvent(g_title_event);
 }
 
-struct Writer {
-    std::string s;
-    Writer& u8_(u8 v) { s.push_back((char)v); return *this; }
-    Writer& u32_(u32 v) { s.append((const char*)&v, 4); return *this; }
-    Writer& u64_(u64 v) { s.append((const char*)&v, 8); return *this; }
-    Writer& bytes(const void* p, size_t n) { s.append((const char*)p, n); return *this; }
-    Writer& str(const char* p) { u32 n = p ? (u32)strlen(p) : 0; u32_(n); return bytes(p, n); }
-};
-
 static std::mutex g_ev_mutex;
 static std::deque<std::string> g_events;
 
-static void push_event(const std::string& e) {
+void push_event(const std::string& e) {
     std::lock_guard<std::mutex> lock(g_ev_mutex);
     g_events.push_back(e);
 }
-static void push_error(const std::string& msg) {
+void push_error(const std::string& msg) {
     logf("ERRO %s", msg.c_str());
     push_event(Writer().u8_(EV_ERROR).str(msg.c_str()).s);
 }
@@ -454,16 +414,6 @@ static void poll_packets() {
 
 // ---------------------------------------------------------------- comandos
 
-struct Reader {
-    const u8* p;
-    size_t n, i = 0;
-    Reader(const std::string& s) : p((const u8*)s.data()), n(s.size()) {}
-    bool has(size_t k) const { return i + k <= n; }
-    u8 u8_() { return has(1) ? p[i++] : 0; }
-    u64 u64_() { u64 v = 0; if (has(8)) { memcpy(&v, p + i, 8); i += 8; } return v; }
-    std::string rest() { std::string s((const char*)p + i, n - i); i = n; return s; }
-};
-
 static void handle_command(const std::string& frame, bool& is_poll) {
     Reader r(frame);
     u8 op = r.u8_();
@@ -547,6 +497,33 @@ static void handle_command(const std::string& frame, bool& is_poll) {
     }
 }
 
+// Modo UDP: POLL e SET_TITLE sao comuns; o resto vai para o transporte UDP.
+static void handle_command_udp(const std::string& frame, bool& is_poll) {
+    Reader r(frame);
+    u8 op = r.u8_();
+    is_poll = false;
+    switch (op) {
+    case OP_POLL:
+        is_poll = true;
+        break;
+    case OP_SET_TITLE:
+        set_title(r.rest());
+        break;
+    case OP_HOST:
+    case OP_JOIN:
+    case OP_LEAVE:
+    case OP_INVITE:
+    case OP_SEND:
+    case OP_SET_LOBBY_DATA:
+    case OP_CLOSE_PEER:
+    case OP_PEER_STATE:
+        udp_command(op, r);
+        break;
+    default:
+        push_error("comando desconhecido " + std::to_string(op));
+    }
+}
+
 // ---------------------------------------------------------------- pipes
 
 static bool read_exact(HANDLE h, void* buf, DWORD n) {
@@ -570,10 +547,8 @@ static bool write_all(HANDLE h, const void* buf, DWORD n) {
     return true;
 }
 
-static std::string build_reply() {
-    poll_pending();
-    poll_members();
-    poll_packets();
+// So esvazia a fila de eventos (modo UDP, ou Steam indisponivel).
+static std::string drain_reply() {
     std::deque<std::string> evs;
     {
         std::lock_guard<std::mutex> lock(g_ev_mutex);
@@ -585,16 +560,37 @@ static std::string build_reply() {
     return w.s;
 }
 
-static std::string read_token() {
+static std::string build_reply() {
+    poll_pending();
+    poll_members();
+    poll_packets();
+    return drain_reply();
+}
+
+static std::string trim(const std::string& s) {
+    size_t a = 0, b = s.size();
+    while (a < b && (s[a] == ' ' || s[a] == '\t' || s[a] == '\r' || s[a] == '\n')) ++a;
+    while (b > a && (s[b - 1] == ' ' || s[b - 1] == '\t' || s[b - 1] == '\r' || s[b - 1] == '\n')) --b;
+    return s.substr(a, b - a);
+}
+
+// Linha 1 do mpnet.token: token dos pipes. Linha 2 (opcional): modo de transporte.
+static std::string read_token(std::string& mode) {
     std::string path = std::string(g_dir) + "mpnet.token";
     for (int i = 0; i < 200; ++i) {
         FILE* f = fopen(path.c_str(), "rb");
         if (f) {
-            char b[64] = {0};
+            char b[4096] = {0};
             size_t n = fread(b, 1, sizeof b - 1, f);
             fclose(f);
-            std::string t(b, n);
-            while (!t.empty() && (t.back() == '\r' || t.back() == '\n' || t.back() == ' ')) t.pop_back();
+            std::string all(b, n);
+            size_t nl = all.find('\n');
+            std::string t = trim(all.substr(0, nl));
+            mode.clear();
+            if (nl != std::string::npos) {
+                std::string rest = all.substr(nl + 1);
+                mode = trim(rest.substr(0, rest.find('\n')));
+            }
             if (!t.empty()) return t;
         }
         Sleep(50);
@@ -604,12 +600,20 @@ static std::string read_token() {
 
 static DWORD WINAPI worker(LPVOID) {
     logf("mpnet %u iniciando, pasta %s", MPNET_VERSION, g_dir);
-    std::string token = read_token();
+    std::string mode;
+    std::string token = read_token(mode);
     if (token.empty()) { logf("sem mpnet.token, encerrando"); return 0; }
 
+    // Modo de transporte: sem linha 2 (ou "steam") fica tudo como antes.
     std::string err;
-    bool steam_ok = load_steam(err);
-    if (steam_ok) {
+    bool steam_ok = false, udp_ok = false;
+    if (mode.compare(0, 3, "udp") == 0) {
+        logf("modo UDP: %s", mode.c_str());
+        udp_ok = udp_parse_mode(mode, err) && udp_start(err);
+        if (!udp_ok) push_error("UDP: " + err);
+    } else if (!mode.empty() && mode != "steam") {
+        push_error("mpnet.token: modo desconhecido '" + mode + "'");
+    } else if ((steam_ok = load_steam(err)) == true) {
         p_SteamAPI_RegisterCallback(&g_cb_join, 333);
         p_SteamAPI_RegisterCallback(&g_cb_sreq, 1202);
         p_SteamAPI_RegisterCallback(&g_cb_sfail, 1203);
@@ -650,17 +654,11 @@ static DWORD WINAPI worker(LPVOID) {
             std::string frame(len, '\0');
             if (len && !read_exact(in, &frame[0], len)) break;
             bool is_poll = false;
-            if (steam_ok) handle_command(frame, is_poll);
+            if (udp_ok) handle_command_udp(frame, is_poll);
+            else if (steam_ok) handle_command(frame, is_poll);
             else is_poll = !frame.empty() && (u8)frame[0] == OP_POLL;
             if (is_poll) {
-                std::string reply = steam_ok ? build_reply() : [] {
-                    std::deque<std::string> evs;
-                    { std::lock_guard<std::mutex> lock(g_ev_mutex); evs.swap(g_events); }
-                    Writer w;
-                    w.u64_(now_us());
-                    for (auto& e : evs) { w.u32_((u32)e.size()); w.bytes(e.data(), e.size()); }
-                    return w.s;
-                }();
+                std::string reply = steam_ok ? build_reply() : drain_reply();
                 u32 total = (u32)reply.size();
                 if (!write_all(out, &total, 4) || (total && !write_all(out, reply.data(), total))) break;
             }

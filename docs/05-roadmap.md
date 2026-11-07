@@ -28,6 +28,13 @@ Saída do spike: atualização de `02-decisoes.md` nos pendentes, whitelist inic
 - Duas instâncias no mesmo PC, depois duas máquinas reais pela Steam.
 - Medição de RTT e perda pelo relay da Steam.
 
+## Estado em 2026-11-07, pacote 0.2
+
+- Marco 1: completo. Steam testado entre duas casas com o pacote 0.1; modo UDP local feito e testado.
+- Marco 2: feito e testado entre duas instâncias. Falta a confirmação dos jogadores pela Steam.
+- Marco 3: terreno feito; rede e aplicação testadas, captura da escavação real a confirmar no teste 0.2. Itens ainda não.
+- Detalhes em [09-mphydroneer.md](09-mphydroneer.md).
+
 ## Marco 2. Andar junto
 
 - Slots, puppets, `POSE` e `PAWNS`.

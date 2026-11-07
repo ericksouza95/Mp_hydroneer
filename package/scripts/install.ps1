@@ -1,11 +1,11 @@
-# Instalador do Hydroneer MP (teste de conexao). Chamado por Instalar.bat.
+﻿# Instalador do Hydroneer MP (teste de conexao). Chamado por Instalar.bat.
 # So adiciona arquivos na pasta do jogo. Qualquer arquivo que ja existia e copiado para backup antes.
-param([string]$GameDir, [switch]$Yes)
+param([string]$GameDir, [switch]$Yes, [string]$DataDir)
 $ErrorActionPreference = "Stop"
 $TestedBuild = "23218978"
 $pkg = Split-Path $PSScriptRoot -Parent
 $files = Join-Path $pkg "files"
-$data = Join-Path $env:LOCALAPPDATA "HydroneerMP"
+$data = if ($DataDir) { $DataDir } else { Join-Path $env:LOCALAPPDATA "HydroneerMP" }
 $manifestPath = Join-Path $data "install.json"
 
 function Say($t) { Write-Host $t }
@@ -35,11 +35,13 @@ function Find-Game {
 
 Say ""
 Say "=== Hydroneer MP: instalacao ==="
-if (Get-Process -Name "Mining-Win64-Shipping" -ErrorAction SilentlyContinue) {
-    Say "Feche o Hydroneer antes de instalar."; exit 2
-}
-if (Test-Path $manifestPath) {
-    Say "Ja existe uma instalacao do Hydroneer MP. Rode Desinstalar.bat antes de instalar de novo."; exit 2
+$modName = (Get-ChildItem (Join-Path $files "ue4ss\Mods") -Directory | Select-Object -First 1).Name
+$pkgVersion = [string](Get-Content (Join-Path $pkg "VERSAO.txt") -ErrorAction SilentlyContinue | Select-Object -First 1)
+$pkgVersion = $pkgVersion.Trim()
+
+function Game-Running($dir) {
+    @(Get-Process -Name "Mining-Win64-Shipping" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Path -and $_.Path.StartsWith($dir, [StringComparison]::OrdinalIgnoreCase) }).Count -gt 0
 }
 
 $build = "?"
@@ -54,6 +56,13 @@ if ($GameDir) {
 }
 $w64 = Join-Path $game "Mining\Binaries\Win64"
 if (-not (Test-Path (Join-Path $w64 "Mining-Win64-Shipping.exe"))) { Say "Pasta do jogo invalida: $game"; exit 2 }
+if (Game-Running $game) { Say "Feche o Hydroneer antes de instalar."; exit 2 }
+if (Test-Path $manifestPath) {
+    $old = Get-Content $manifestPath -Raw | ConvertFrom-Json
+    Say "Removendo a versao anterior ($($old.version)) antes de instalar a nova..."
+    powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "uninstall.ps1") -DataDir $data
+    if (Test-Path $manifestPath) { Say "Nao consegui remover a versao anterior. Rode Desinstalar.bat."; exit 2 }
+}
 Say "Jogo: $game"
 Say "Versao Steam: $build (testado com $TestedBuild)"
 if ($build -ne $TestedBuild) {
@@ -65,8 +74,8 @@ if ($build -ne $TestedBuild) {
 $existingUe4ss = (Test-Path (Join-Path $w64 "ue4ss\UE4SS.dll")) -or (Test-Path (Join-Path $w64 "UE4SS.dll"))
 if ($existingUe4ss) {
     $modsDir = if (Test-Path (Join-Path $w64 "ue4ss\Mods")) { Join-Path $w64 "ue4ss\Mods" } else { Join-Path $w64 "Mods" }
-    Say "UE4SS ja existe nesta pasta; vou adicionar so o mod MpPing."
-    $plan = @(@{ From = Join-Path $files "ue4ss\Mods\MpPing"; To = Join-Path $modsDir "MpPing" })
+    Say "UE4SS ja existe nesta pasta; vou adicionar so o mod $modName."
+    $plan = @(@{ From = Join-Path $files "ue4ss\Mods\$modName"; To = Join-Path $modsDir $modName })
 } else {
     $modsDir = Join-Path $w64 "ue4ss\Mods"
     $plan = @(
@@ -103,14 +112,14 @@ if ($existingUe4ss) {
     $txt = Join-Path $modsDir "mods.txt"
     if (Test-Path $txt) {
         $b = Join-Path $backup "mods.txt"; New-Item -ItemType Directory -Force $backup | Out-Null; Copy-Item $txt $b -Force
-        $lines = Get-Content $txt | Where-Object { $_ -notmatch '^\s*MpPing\s*:' }
-        Set-Content $txt (@("MpPing : 1") + $lines) -Encoding ascii
+        $lines = Get-Content $txt | Where-Object { $_ -notmatch ('^\s*' + $modName + '\s*:') }
+        Set-Content $txt (@("$modName : 1") + $lines) -Encoding ascii
         $modsTxtEdited = $true; $backedUp += @{ File = $txt; Backup = $b }
     }
 }
 
 $manifest = [ordered]@{
-    version = "0.1"; installed = $stamp; game_dir = $game; win64 = $w64; mode = $(if ($existingUe4ss) { "mod" } else { "full" })
+    version = $pkgVersion; mod_name = $modName; installed = $stamp; game_dir = $game; win64 = $w64; mode = $(if ($existingUe4ss) { "mod" } else { "full" })
     added = $added; backups = $backedUp; mods_txt_edited = $modsTxtEdited; mods_dir = $modsDir
 }
 $manifest | ConvertTo-Json -Depth 4 | Set-Content $manifestPath -Encoding utf8

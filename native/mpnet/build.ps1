@@ -11,9 +11,10 @@ $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.
 if (-not $vs) { throw "Visual Studio com ferramentas C++ x64 nao encontrado" }
 $vcvars = Join-Path $vs "VC\Auxiliary\Build\vcvars64.bat"
 
-$src = Join-Path $here "mpnet.cpp"
-$cmd = "`"$vcvars`" >nul && cl /nologo /std:c++17 /O2 /MT /EHsc /W4 /permissive- /LD `"$src`" " +
-       "/Fo`"$out\\`" /Fe`"$out\mpnet.dll`" /link /NOLOGO kernel32.lib user32.lib"
+# mpnet.cpp: nucleo (pipes, Steam). mpnet_udp.cpp: transporte UDP local (precisa de ws2_32).
+$srcs = @("mpnet.cpp", "mpnet_udp.cpp") | ForEach-Object { "`"$(Join-Path $here $_)`"" }
+$cmd = "`"$vcvars`" >nul && cl /nologo /std:c++17 /O2 /MT /EHsc /W4 /permissive- /LD $($srcs -join ' ') " +
+       "/Fo`"$out\\`" /Fe`"$out\mpnet.dll`" /link /NOLOGO kernel32.lib user32.lib ws2_32.lib"
 cmd /c $cmd
 if ($LASTEXITCODE -ne 0) { throw "falha na compilacao ($LASTEXITCODE)" }
 Get-Item (Join-Path $out "mpnet.dll") | Select-Object FullName, Length, LastWriteTime

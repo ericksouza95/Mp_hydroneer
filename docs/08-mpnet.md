@@ -82,6 +82,106 @@ Resposta ao `POLL`: `u32 tamanho total`, `u64 relógio em microssegundos`, depoi
 
 Durante o `POLL`, a thread do jogo está parada esperando a resposta. Qualquer chamada na DLL que dependa da thread do jogo trava os dois. Aconteceu na versão 2 com `SetWindowTextW`, que manda uma mensagem para a janela e espera a thread dona processar. O jogo congelou no segundo tick. A correção foi aplicar o título numa thread própria. Toda chamada nova da DLL deve ser conferida contra essa regra.
 
+## Modo UDP
+
+Duas cópias do jogo no mesmo PC não conversam pela Steam, porque usam a mesma conta. O modo UDP troca a Steam por UDP no localhost e mantém os mesmos comandos, eventos e quadros do pipe. O Lua não precisa saber qual transporte está ativo. Código em `native/mpnet/mpnet_udp.cpp`.
+
+### Como ativar
+
+A linha 2 do `mpnet.token` escolhe o modo. A linha 1 continua sendo o token. Espaços e `\r\n` no fim das linhas são ignorados.
+
+| Linha 2 | Efeito |
+|---|---|
+| ausente ou `steam` | Steam, como antes |
+| `udp host <porta>` | host UDP em `127.0.0.1:<porta>` |
+| `udp client <ip>:<porta>` | cliente do host nesse endereço; `localhost` vale como `127.0.0.1` |
+
+Qualquer outra coisa gera `ERROR` e a DLL só responde ao `POLL`. No modo UDP a DLL não chama `load_steam()` e funciona sem a `steam_api64.dll`, até num processo Python comum. O host escuta só no loopback para não disparar o aviso do firewall do Windows; o modo serve para teste local, não para LAN.
+
+### Identidade
+
+| Item | Valor |
+|---|---|
+| id próprio | `0x7F00000000000000 \| porta UDP local` |
+| id do host | `0x7F00000000000000 \| porta do host` |
+| nome | `udp-<porta>` |
+| lobby | `0x7E00000000000001`, fixo |
+| `HELLO` | `version` 3, `app` 0 |
+
+O cliente usa uma porta efêmera, então o id dele muda a cada execução.
+
+### Comandos
+
+| Comando | Modo UDP |
+|---|---|
+| `HOST` | só no host. Abre a sala e emite `LOBBY_CREATED(1, lobby)`, `LOBBY_ENTERED(lobby, 1, self)` e `MEMBER_JOINED(self)`, a mesma sequência da Steam. `max` vale de 2 a 4, contando o host |
+| `JOIN` | só no cliente; o argumento é ignorado. Manda HELLO a cada 250 ms. Ao ser aceito, emite `LOBBY_ENTERED(lobby, 1, host)` e um `MEMBER_JOINED` por membro, na ordem da lista do host, incluindo host e o próprio cliente. Sala cheia: `LOBBY_ENTERED(lobby, 4, 0)`, o mesmo código de sala cheia da Steam. Sem resposta em 10 s: `ERROR` |
+| `LEAVE` | cliente manda BYE e emite `MEMBER_LEFT` de todos, ele por último. Host manda BYE para todos e faz o mesmo; cada cliente que recebe o BYE também |
+| `SEND` | tipos 0 e 1: não confiável, até 1.200 bytes de carga. Tipos 2 e 3: confiável e em ordem por remetente, destinatário e canal, até 1 MB. Fora desses limites, canal acima de 3 ou destino fora da sala, o envio é descartado com linha no `mpnet.log`. Enviar para si mesmo gera `PACKET` local, como na Steam |
+| `CLOSE_PEER` | no host, remove o cliente: ele recebe BYE e sai. No cliente não faz nada |
+| `PEER_STATE` | um `PEER_STATE` por membro, sem o próprio, como na Steam: `active` 1, `connecting` 0, `error` 0, `relay` 1 só entre clientes. `bytes_queued` e `packets_queued` são os fragmentos confiáveis ainda sem ack |
+| `INVITE`, `SET_LOBBY_DATA` | sem efeito |
+| `SET_TITLE` | igual nos dois modos |
+
+### Topologia e eventos
+
+A rede é uma estrela: o cliente só conhece o endereço do host. O que um cliente manda para outro passa pelo host, que repassa. O `PACKET` chega com `peer` igual ao remetente original. O host usa o endereço de origem do datagrama para saber quem mandou, não o campo do pacote.
+
+O host guarda a lista da sala, com no máximo 4 membros, ele incluído. Quando a lista muda, ele a manda para todos os clientes com um número de versão. Cada cliente compara com a lista anterior e emite `MEMBER_JOINED` e `MEMBER_LEFT` da diferença.
+
+Keepalive a cada 1 s nos dois sentidos: o cliente manda PING e o host reenvia a lista. Um par calado por 5 s cai. No host, isso gera `MEMBER_LEFT` e uma lista nova. No cliente que perde o host, gera `MEMBER_LEFT` de todos, ele por último, e o cliente volta a ficar fora da sala.
+
+### Confiabilidade
+
+- É garantida por salto, entre cliente e host, com um fluxo por canal. No relay, o host remonta a mensagem e a enfileira no enlace do destino. Isso preserva a ordem por remetente.
+- Cada mensagem vira fragmentos de até 1.200 bytes de datagrama, com 24 bytes de cabeçalho. Cada fragmento tem uma sequência `u32` por enlace e canal.
+- Janela deslizante de 256 fragmentos em voo. O receptor confirma com ack cumulativo e uma máscara de 64 bits para o que chegou fora de ordem. Os acks saem uma vez por lote recebido.
+- Fragmento sem ack é reenviado a cada 100 ms. Se o fragmento mais antigo ficar 10 s sem ack, sai `SESSION_FAIL(peer, 4)` e o par cai como se tivesse ficado calado. O código 4 é o mesmo de timeout da Steam.
+
+Datagramas: todos começam com `u8 0xA7` e `u8 tipo`.
+
+| Tipo | Conteúdo |
+|---|---|
+| 1 HELLO | `u32 versão`, `u32 nonce` (novo a cada JOIN) |
+| 2 ROSTER | `u32 versão da lista`, `u8 n`, `n x u64 id` |
+| 3 REFUSE | `u32 resposta` |
+| 4 PING | nada |
+| 5 BYE | nada; enviado 3 vezes |
+| 6 UNREL | `u8 canal`, `u64 de`, `u64 para`, dados |
+| 7 REL | `u8 canal`, `u8 flags` (1 primeiro, 2 último), `u32 seq`, `u64 de`, `u64 para`, dados |
+| 8 ACK | `u8 canal`, `u32 próximo esperado`, `u64 máscara` |
+
+### Threads
+
+O socket fica numa thread de rede própria. Ela cuida do `recvfrom`, dos acks, do keepalive, da retransmissão e dos timeouts, e põe os eventos na fila comum. A thread do pipe executa os comandos na hora: enfileira e faz o `sendto` não bloqueante. As duas threads dividem um mutex, que nenhuma delas segura enquanto espera. A regra de ouro continua valendo: nada no modo UDP espera a thread do jogo.
+
+### Harness de teste
+
+`tools/mpnet_harness.py` testa o modo UDP sem o jogo:
+
+```
+powershell -ExecutionPolicy Bypass -File native\mpnet\build.ps1
+python tools\mpnet_harness.py
+```
+
+Cada participante é um processo Python. Ele copia a DLL para uma pasta temporária própria, escreve o `mpnet.token`, carrega a DLL com `ctypes` e roda o laço do Lua a 60 Hz. O orquestrador comanda cada processo por JSON e confere os eventos. A saída é uma tabela PASS/FAIL, com código de saída 0 só se tudo passar. Com `--keep`, as pastas temporárias e os `mpnet.log` ficam guardados.
+
+O teste cobre:
+
+- `ERROR` sobre a Steam num processo sem `steam_api64.dll`
+- `HELLO`, `HOST`, `JOIN` e a lista de membros em todos os lados
+- não confiável de 1.200 bytes nos dois sentidos; acima disso, recusado
+- confiável: 200 KB, 1 MB e 500 mensagens em ordem
+- relay entre clientes com o remetente certo, confiável e não confiável
+- `PEER_STATE`, `LEAVE` de cliente e de host, `CLOSE_PEER` e o 5º membro recusado
+- timeout de 5 s ao matar um cliente e ao matar o host
+- `ERROR` de `JOIN` sem host em 10 s
+- uma segunda sala com 20% de perda simulada: retransmissão, ordem e nenhuma duplicata
+
+A perda vem da variável de ambiente `MPNET_UDP_LOSS=<0..90>`, a porcentagem de datagramas enviados que a DLL descarta. Ela só existe para teste. Sem a variável, nada é descartado.
+
+Não coberto pelo harness: o `SESSION_FAIL` após 10 s sem ack. Ele exige um par que responde ao keepalive mas nunca confirma dados.
+
 ## Compilar e testar
 
 ```

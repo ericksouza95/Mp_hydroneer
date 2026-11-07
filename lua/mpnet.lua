@@ -31,14 +31,18 @@ local function frame(payload)
     return string.pack("<s4", payload)
 end
 
-function M.start(dll_path)
+-- mode: nil ou "steam" (padrao), "udp host <porta>" ou "udp client <ip>:<porta>".
+-- O modo UDP serve para testar varias copias do jogo num PC so; nao usa a Steam.
+function M.start(dll_path, mode)
     if loaded then return true end
     local dir = dll_path:match("^(.*[/\\])") or ""
     math.randomseed(os.time())
     token = string.format("%d%06d", os.time(), math.random(0, 999999))
     local f = io.open(dir .. "mpnet.token", "wb")
     if not f then err = "nao consegui escrever mpnet.token em " .. dir; return false, err end
-    f:write(token); f:close()
+    f:write(token)
+    if mode and mode ~= "" and mode ~= "steam" then f:write("\n" .. mode) end
+    f:close()
     local ok, e = package.loadlib(dll_path, "*")
     if not ok then err = "package.loadlib falhou: " .. tostring(e); return false, err end
     loaded = true

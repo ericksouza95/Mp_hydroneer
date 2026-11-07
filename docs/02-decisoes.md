@@ -108,6 +108,32 @@ Formato: número, data, decisão, motivo, consequências. Decisões podem ser re
 
 **Consequências.** D02 continua valendo no protocolo e no app id; muda só a implementação. O projeto passa a ter um binário nativo, compilado com o Visual Studio 2022. O autoteste numa instância passou: SteamID real, P2P nos dois canais, lobby, rajada completa e callbacks.
 
+## D17. Personagem remoto anda por comandos de movimento, não por teleporte (2026-11-07)
+
+**Decisão.** Bonecos nos clientes e pawns ocultos no host recebem `AddMovementInput` em direção à pose recebida, mirando 100 ms à frente pela velocidade. Teleporte só acima de 3 m de erro. Bonecos sem controlador ligam `bRunPhysicsWithNoController`.
+
+**Motivo.** Teleporte por frame trava a animação de passo. No teste espelho, a animação acompanhou em 99,7% das amostras; entre duas instâncias, o erro em movimento ficou em 16 cm.
+
+## D18. Terreno: quem cava aplica na hora, o host define a ordem para os outros (2026-11-07)
+
+**Decisão.** Edições locais são aplicadas pelo próprio jogo. O cliente manda ao host; o host aplica e repassa com sequência aos demais, menos à origem. O host manda as próprias edições a todos. Edições recebidas são aplicadas com a mesma chamada do Voxel Plugin, no mundo de voxel com o mesmo nome.
+
+**Motivo.** Sem latência para quem cava. As funções de esfera são determinísticas para a mesma entrada.
+
+**Consequências.** Duas escavações simultâneas no mesmo lugar podem divergir em ordem. Aceito por ora.
+
+## D19. Nunca deixar um hook ler parâmetros dentro de chamada iniciada pelo Lua (2026-11-07)
+
+**Decisão.** Toda chamada do mod que possa chegar a uma função com hook roda sob trava, e o hook sai sem ler nada. O hook de terreno grava um marcador antes de ler parâmetros; se o jogo fechar, o próximo início desliga a sincronização de terreno.
+
+**Motivo.** Com o UE4SS 1217, ler o primeiro parâmetro do hook dentro de uma escavação chamada pelo Lua derrubou o jogo com acesso a endereço nulo.
+
+## D20. Testes com várias cópias por UDP local, Steam só no jogo real (2026-11-07)
+
+**Decisão.** A `mpnet.dll` ganhou o modo UDP de D12, feito por um agente com contrato fixo. Os testes rodam duas cópias por hardlink, com `tools/run-test.ps1` e robôs configurados em `mp-config.txt`. O harness `tools/mpnet_harness.py` testa a ponte sem o jogo.
+
+**Motivo.** Uma conta Steam por máquina impede testar dois jogadores pela Steam num PC.
+
 ## Pendentes
 
 - **Licença.** Precisa ser escolhida antes de receber contribuição externa. Sugestão: MIT, igual ao UE4SS e ao coop-anything.

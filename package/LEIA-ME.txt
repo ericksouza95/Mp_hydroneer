@@ -1,11 +1,17 @@
-HYDRONEER MP - TESTE DE CONEXAO (versao 0.1)
-=============================================
+HYDRONEER MP - TESTE 0.2
+========================
 
 O que é isto
 ------------
-Um teste da conexão online entre amigos pela Steam, para o projeto de
-co-op do Hydroneer. Ainda NÃO é o co-op: vocês não se veem no jogo.
-O mod só mede ping e banda entre os computadores e grava um relatório.
+Segundo teste do co-op online do Hydroneer, pela Steam.
+Novidades desde o 0.1:
+- Vocês se veem no jogo: cada um aparece andando no mundo do outro.
+- O terreno é compartilhado: o que um cava, o outro vê sumir.
+- Ping medido sem os primeiros segundos de conexão, com o FPS de cada lado.
+
+Ainda NÃO sincroniza: itens, ferramentas, dinheiro, lojas, máquinas,
+veículos. Cada um tem os seus itens. Vocês vão ver o amigo andando, mas
+não o que ele carrega.
 
 Projeto: https://github.com/ericksouza95/Mp_hydroneer
 
@@ -15,8 +21,6 @@ Precisa de
 - Hydroneer na Steam, a mesma versão nos dois PCs.
 - Steam aberta e o overlay da Steam ligado (Shift+Tab funciona no jogo).
 - Vocês dois amigos na Steam.
-- Jogo em modo janela, se quiser ver o status no título da janela.
-  Em tela cheia funciona igual, só não aparece o status.
 
 
 Instalar (os dois)
@@ -24,49 +28,49 @@ Instalar (os dois)
 1. Extraia este zip numa pasta qualquer (não rode de dentro do zip).
 2. Feche o Hydroneer.
 3. Clique duas vezes em  Instalar.bat
-   Ele acha o jogo pela Steam sozinho. Se o Windows perguntar se pode
-   executar, confirme.
+   Se a versão 0.1 estiver instalada, ele remove sozinho antes.
 
 
 Testar
 ------
-1. Os dois abrem o Hydroneer normalmente pela Steam.
-2. Quem hospeda aperta  F8  no menu do jogo.
-   Abre a janela de convite da Steam: convide o amigo.
-3. O amigo aceita o convite (notificação da Steam ou Shift+Tab).
-   Ele entra sozinho, não precisa apertar nada.
-4. Deixem o jogo aberto por pelo menos 1 minuto depois que o amigo entrar.
-   O mod mede o ping o tempo todo e, depois de 15 segundos,
-   faz um teste de banda de 10 segundos.
-5. F9 sai da sala. F8 de novo reabre o convite.
+IMPORTANTE: os dois começam um JOGO NOVO (Novo jogo no menu).
+O terreno só bate se os dois mundos começarem iguais. Não use seu save
+de verdade neste teste.
 
-O título da janela mostra:  sala 2/4 | NomeDoAmigo 45 ms
+1. Os dois abrem o Hydroneer e começam um jogo novo.
+2. Quem hospeda, já dentro do jogo, aperta  F8  e convida o amigo.
+3. O amigo aceita o convite e entra sozinho.
+4. Andem perto um do outro, peguem a pá e cavem. Confiram:
+   - se o boneco do outro anda e acompanha bem;
+   - se o buraco que um cava aparece para o outro.
+5. Joguem pelo menos 5 minutos.
+6. F9 sai da sala. F8 de novo reabre o convite.
+
+O título da janela mostra:  host | sala 2/4 | Amigo 85 ms (60 fps)
 
 
 Mandar o resultado
 ------------------
 Clique em  Abrir relatorio.bat  e mande o texto (os dois, por favor).
-O arquivo fica em:  %LOCALAPPDATA%\HydroneerMP\relatorio.txt
+Contem também o que viram: o boneco andava normal? travava? flutuava?
+Os buracos apareciam no lugar certo?
 O relatório tem os nomes e as IDs Steam de vocês dois.
 
 
 Desinstalar
 -----------
 Feche o jogo e clique em  Desinstalar.bat
-Ele remove exatamente o que foi instalado e devolve qualquer arquivo
-que já existia antes. O relatório continua guardado.
 
 
 Problemas comuns
 ----------------
+- F8 não faz nada: precisa estar dentro de um jogo, não no menu.
 - Antivírus reclamando: o UE4SS se carrega pelo arquivo dwmapi.dll, e
-  alguns antivírus estranham isso. É o mesmo método de vários mods de jogos
-  da Unreal. Se bloquear, o teste não roda.
-- F8 não faz nada: espere o menu principal carregar por completo.
+  alguns antivírus estranham isso. Se bloquear, o teste não roda.
 - Convite não chega: confira se o overlay da Steam está ligado para o
   Hydroneer (Steam > Propriedades do jogo > Geral).
 - Versão diferente: o instalador avisa. Os dois precisam estar na mesma
-  versão do jogo.
+  versão do jogo e do pacote.
 
 
 O que vai instalado
@@ -75,5 +79,5 @@ Na pasta  Hydroneer\Mining\Binaries\Win64  do jogo:
 - dwmapi.dll e a pasta ue4ss: o UE4SS, carregador de mods (licença MIT,
   https://github.com/UE4SS-RE/RE-UE4SS). Se você já tem UE4SS, ele é mantido
   e só o mod é adicionado.
-- ue4ss\Mods\MpPing: o mod de teste e a ponte mpnet.dll.
+- ue4ss\Mods\MpHydroneer: o mod e a ponte mpnet.dll.
 Nada da sua instalação ou dos seus saves é alterado.

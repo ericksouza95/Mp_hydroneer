@@ -19,7 +19,9 @@ Saída do spike: atualização de `02-decisoes.md` nos pendentes, whitelist inic
 
 ## Marco 1. Ponte de transporte
 
-- Modo `udp` em loopback e modo `steam` via SteamCore, mesmo protocolo.
+**Status: modo `steam` feito numa instância (2026-11-07).** A `mpnet.dll` está em [08-mpnet.md](08-mpnet.md). Faltam o modo `udp`, o teste entre duas máquinas e o laço por frame.
+
+- Modo `udp` em loopback e modo `steam` via `mpnet.dll`, mesmo protocolo.
 - Lobby só por amigos, convite pelo overlay, sessão P2P aceita, ping e pong nos dois canais.
 - `qa/gamepool.json` para 2 a 4 cópias do Hydroneer por hardlink, com saves isolados, lançadas pelo `gameslot`.
 - Relay `chaos` entre as cópias locais, perfil `bad_wifi`.

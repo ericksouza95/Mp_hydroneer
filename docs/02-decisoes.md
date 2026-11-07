@@ -100,12 +100,15 @@ Formato: número, data, decisão, motivo, consequências. Decisões podem ser re
 
 **Motivo.** Num mundo novo, nenhum dos 557 itens simulava física depois de assentar.
 
-## Pendentes
+## D16. Steam por DLL nativa companheira, não pelo SteamCore (2026-11-07)
 
-- **Transporte Steam: como chamar a Steam.** O spike mostrou que a SteamID do SteamCore chega vazia ao Lua, então P2P, lobby e convite não funcionam pela reflexão. Opções:
-  1. **DLL nativa companheira, recomendada.** Uma DLL nossa em C++, carregada pelo Lua com `package.loadlib`, chama a API flat da `steam_api64.dll` do próprio jogo: P2P legado, lobby e callbacks. Conversa com o Lua por um pipe nomeado aberto com `io.open`, num ciclo de pedido e resposta por tick. Não exige compilar o UE4SS. Mantém D02 no protocolo e no app id.
-  2. **Mod C++ do UE4SS.** Mesma chamada direta à Steam, com acesso nativo aos objetos do jogo. Exige compilar o UE4SS a partir do código-fonte, que depende de conta GitHub vinculada à Epic, e manter o build a cada versão do UE4SS.
-  3. **Ponte Blueprint via modkit.** O Blueprint enxerga a SteamID normalmente. Exige o editor Unreal 4.26 e que o modkit traga as classes do SteamCore, o que não foi verificado.
+**Decisão.** A `mpnet.dll`, em C++, é carregada pelo Lua com `package.loadlib` e chama a API flat da `steam_api64.dll` do próprio jogo: P2P legado, lobby, overlay e callbacks. Conversa com o Lua por dois pipes nomeados, num ciclo de pedido e resposta por tick. Detalhes em `08-mpnet.md`.
+
+**Motivo.** A SteamID do SteamCore chega vazia ao Lua do UE4SS, o que inutiliza P2P, lobby e convite pela reflexão. As alternativas eram compilar o UE4SS a partir do código-fonte, que depende de conta GitHub vinculada à Epic, ou instalar o editor Unreal 4.26 para uma ponte Blueprint.
+
+**Consequências.** D02 continua valendo no protocolo e no app id; muda só a implementação. O projeto passa a ter um binário nativo, compilado com o Visual Studio 2022. O autoteste numa instância passou: SteamID real, P2P nos dois canais, lobby, rajada completa e callbacks.
+
+## Pendentes
 
 - **Licença.** Precisa ser escolhida antes de receber contribuição externa. Sugestão: MIT, igual ao UE4SS e ao coop-anything.
 - **Whitelist de campos por classe.** Primeira versão em `07-spike.md`, tabela de classes e funções.

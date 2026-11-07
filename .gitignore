@@ -22,3 +22,6 @@ __pycache__/
 *.log
 Thumbs.db
 desktop.ini
+
+# Saidas de build nativo
+native/*/build/

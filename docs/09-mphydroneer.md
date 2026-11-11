@@ -1,6 +1,35 @@
 # 09. MpHydroneer: o mod de co-op
 
-Código em `mod/MpHydroneer/Scripts/`. Usa a ponte `mpnet` ([08-mpnet.md](08-mpnet.md)). Versão 0.2, protocolo 1.
+Código em `mod/MpHydroneer/Scripts/`. Usa a ponte `mpnet` ([08-mpnet.md](08-mpnet.md)) e a transferência de save `savesync` ([10-savesync.md](10-savesync.md)). Versão 0.3, protocolo 2.
+
+## Versão 0.3: o cliente é um espelho do mundo do host
+
+| Peça | Como funciona |
+|---|---|
+| Entrada | o cliente pede o mundo; o host salva, manda o save (21 MB) e o cliente carrega o slot `MpHydroneerHost`, do menu ou de dentro de outro mundo |
+| Ações | no cliente, os atalhos de ações de mundo (pegar, clicar, girar...) são removidos e restaurados ao sair; o mod lê as teclas e manda ao host com o alvo que o cliente estava olhando; o host aponta o controlador oculto para esse alvo e executa a ação |
+| Itens | o host dá um id de rede a cada item; manda a lista ao cliente que carregou, depois só itens novos, posições de itens que se moveram, campos de estado (por reflexão) e itens destruídos; o cliente associa pelo nome, ou por classe e posição, e espelha o que carrega |
+| Terreno | escavações do próprio host são capturadas pelo hook; escavações feitas numa ação do cliente acontecem dentro da chamada do mod (D19), então o host lê um cubo de voxels ao redor do ponto e manda o resultado |
+| Hora | o host manda a hora a cada segundo; o cliente para o próprio relógio |
+| Cosmético | a animação de uso do item na mão do cliente toca na hora do clique |
+
+Novas mensagens do protocolo 2: `INPUT` (10), `ITEM_NEW` (12), `ITEM_XFORM` (13), `ITEM_GONE` (14), `ITEM_STATE` (15), `CARRY` (16), `TIME` (17), `SNAPSHOT_DONE` (18), `TERRAIN_PATCH` (19). Tipos 20 a 29 no canal 2 são do savesync.
+
+Teste integrado em duas instâncias (UDP), cliente partindo do menu principal, robô do cliente usando só teclas enviadas ao host:
+
+| Etapa | Resultado |
+|---|---|
+| Host salva | 3,0 s |
+| Transferência | 20,9 MB em 1,5 s |
+| Cliente carrega o mundo do host | 9 s até estabilizar |
+| Itens associados | 557 de 557 pelo nome |
+| Pegar a pá olhando para ela | o pawn oculto pegou; o cliente passou a carregar a mesma pá |
+| Cavar e despejar | retalho de 13³ voxels de 20 cm; chão do cliente de 176,3 para 152,0 |
+| Soltar | ok nos dois lados |
+| Itens criados no host durante a sessão | 4 de 4 apareceram no cliente |
+| Save gravado com o cliente dentro, carregado depois pelo host sozinho | 1 controlador, 1 jogador local, 557 itens: sem jogador fantasma |
+
+Não testado: lavar na pan, vender, comprar e dormir com o robô (passam pelo mesmo caminho de ação e estado); Steam entre dois PCs com a 0.3; dois clientes ao mesmo tempo; veículos, construção e máquinas.
 
 ## O que já faz
 

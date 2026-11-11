@@ -1,25 +1,28 @@
-HYDRONEER MP - TESTE 0.2
+HYDRONEER MP - TESTE 0.3
 ========================
 
 O que é isto
 ------------
-Segundo teste do co-op online do Hydroneer, pela Steam.
-Novidades desde o 0.1:
-- Vocês se veem no jogo: cada um aparece andando no mundo do outro.
-- O terreno é compartilhado: o que um cava, o outro vê sumir.
-- Ping medido sem os primeiros segundos de conexão, com o FPS de cada lado.
+Co-op online do Hydroneer pela Steam, em teste. Projeto:
+https://github.com/ericksouza95/Mp_hydroneer
 
-Ainda NÃO sincroniza: itens, ferramentas, dinheiro, lojas, máquinas,
-veículos. Cada um tem os seus itens. Vocês vão ver o amigo andando, mas
-não o que ele carrega.
+Novidades da 0.3:
+- O amigo entra no MUNDO DO HOST: o jogo do host é salvo, enviado e carregado
+  sozinho no PC do amigo. Não precisa mais começar jogo novo.
+- Itens compartilhados: pegar, carregar, soltar, arremessar. O que um pega,
+  o outro vê na mão dele.
+- Cavar, despejar, encher o balde, lavar na pan, vender no joalheiro e
+  comprar na loja: as ações do amigo são feitas no mundo do host.
+- Dinheiro (moedas), hora do dia e dormir vêm do host.
 
-Projeto: https://github.com/ericksouza95/Mp_hydroneer
+Ainda NÃO sincroniza direito: veículos, construção, máquinas e canos.
+Podem funcionar em parte; se testarem, contem o que viram.
 
 
 Precisa de
 ----------
-- Hydroneer na Steam, a mesma versão nos dois PCs.
-- Steam aberta e o overlay da Steam ligado (Shift+Tab funciona no jogo).
+- Hydroneer na Steam, a mesma versão nos dois PCs, e o mesmo pacote.
+- Steam aberta e o overlay ligado (Shift+Tab funciona no jogo).
 - Vocês dois amigos na Steam.
 
 
@@ -28,32 +31,40 @@ Instalar (os dois)
 1. Extraia este zip numa pasta qualquer (não rode de dentro do zip).
 2. Feche o Hydroneer.
 3. Clique duas vezes em  Instalar.bat
-   Se a versão 0.1 estiver instalada, ele remove sozinho antes.
+   Se uma versão anterior estiver instalada, ele remove sozinho antes.
 
 
-Testar
-------
-IMPORTANTE: os dois começam um JOGO NOVO (Novo jogo no menu).
-O terreno só bate se os dois mundos começarem iguais. Não use seu save
-de verdade neste teste.
+Antes do primeiro teste (host)
+------------------------------
+Faça uma cópia do seu save, ou hospede num jogo novo. O mod salva o mundo
+do host quando o amigo entra, e o salvamento automático do jogo continua
+rodando com o amigo dentro. Os saves ficam em:
+  %LOCALAPPDATA%\Mining\Saved\SaveGames
 
-1. Os dois abrem o Hydroneer e começam um jogo novo.
-2. Quem hospeda, já dentro do jogo, aperta  F8  e convida o amigo.
-3. O amigo aceita o convite e entra sozinho.
-4. Andem perto um do outro, peguem a pá e cavem. Confiram:
-   - se o boneco do outro anda e acompanha bem;
-   - se o buraco que um cava aparece para o outro.
-5. Joguem pelo menos 5 minutos.
-6. F9 sai da sala. F8 de novo reabre o convite.
 
-O título da janela mostra:  host | sala 2/4 | Amigo 85 ms (60 fps)
+Jogar
+-----
+1. O host abre o Hydroneer e entra no jogo (o save que quiser).
+2. Já dentro do jogo, aperta  F8  e convida o amigo na janela da Steam.
+3. O amigo aceita o convite, do menu ou de dentro de um jogo dele.
+   O mundo do host chega e carrega sozinho (uns 20 a 60 segundos).
+   O jogo do amigo é salvo antes de trocar de mundo.
+4. Joguem. F9 sai da sala. F8 de novo reabre o convite.
+
+O título da janela mostra o andamento:
+  recebendo o mundo do host: sending 45%
+  host | sala 2/4 | Amigo 85 ms (60 fps)
+
+Para o amigo, as teclas de mundo (E, clique, girar) vão para o host.
+Por isso a ação dele acontece com o atraso do ping. Andar, pular e a
+câmera continuam instantâneos.
 
 
 Mandar o resultado
 ------------------
 Clique em  Abrir relatorio.bat  e mande o texto (os dois, por favor).
-Contem também o que viram: o boneco andava normal? travava? flutuava?
-Os buracos apareciam no lugar certo?
+Contem o que viram: o boneco do outro andava normal? itens apareciam
+no lugar certo? cavar, lavar, vender e comprar funcionaram?
 O relatório tem os nomes e as IDs Steam de vocês dois.
 
 
@@ -65,12 +76,14 @@ Feche o jogo e clique em  Desinstalar.bat
 Problemas comuns
 ----------------
 - F8 não faz nada: precisa estar dentro de um jogo, não no menu.
+- O amigo ficou no menu depois de aceitar: espere o título da janela;
+  se aparecer falha, aperte F9, peça um convite novo e aceite de novo.
+- O mundo do host aparece no "Continuar" do amigo como MpHydroneerHost:
+  é a cópia que ele recebeu. O mundo dele continua no slot de sempre.
 - Antivírus reclamando: o UE4SS se carrega pelo arquivo dwmapi.dll, e
-  alguns antivírus estranham isso. Se bloquear, o teste não roda.
-- Convite não chega: confira se o overlay da Steam está ligado para o
-  Hydroneer (Steam > Propriedades do jogo > Geral).
-- Versão diferente: o instalador avisa. Os dois precisam estar na mesma
-  versão do jogo e do pacote.
+  alguns antivírus estranham isso. Se bloquear, o mod não roda.
+- Convite não chega: confira o overlay da Steam para o Hydroneer
+  (Steam > Propriedades do jogo > Geral).
 
 
 O que vai instalado
@@ -80,4 +93,4 @@ Na pasta  Hydroneer\Mining\Binaries\Win64  do jogo:
   https://github.com/UE4SS-RE/RE-UE4SS). Se você já tem UE4SS, ele é mantido
   e só o mod é adicionado.
 - ue4ss\Mods\MpHydroneer: o mod e a ponte mpnet.dll.
-Nada da sua instalação ou dos seus saves é alterado.
+Partes do mod vêm do hydroneer-coopnet (MIT, Zane11332).

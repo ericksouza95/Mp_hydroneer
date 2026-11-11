@@ -18,11 +18,182 @@ local function mode_line()
     return "udp client " .. cfg.addr
 end
 
+-- ---------------------------------------------------------------- robo de itens (cliente)
+-- bot=items: depois de ativo, pega a pa, cava, despeja e solta, tudo pelas teclas enviadas ao host.
+local IN = require("input")
+local IT = require("items")
+local ib = { step = 0, at = 0, log_t = 0 }
+
+local function ib_wait(s) ib.at = os.clock() + s end
+
+local function aim(pc, pawn, tx, ty, tz)
+    local x, y, z = U.location(pawn)
+    z = z + 64
+    pcall(function() local c = pawn.Camera:K2_GetComponentLocation(); x, y, z = c.X, c.Y, c.Z end)
+    local r = U.look_at(x, y, z, tx, ty, tz)
+    if r then pcall(function() pc:SetControlRotation(r) end) end
+end
+
+local function bounds_center(actor)
+    local x, y, z = U.location(actor)
+    pcall(function()
+        local o, e = {}, {}
+        actor:GetActorBounds(false, o, e, false)
+        local v = o.Origin or o
+        if v.X then x, y, z = v.X, v.Y, v.Z end
+    end)
+    return x, y, z
+end
+
+local function looking_at(pc)
+    local n = "-"
+    pcall(function() local a = pc.LastThingLookingAt; if a and a:IsValid() then n = a:GetFName():ToString() end end)
+    return n
+end
+
+local function tap(action)
+    IN.client_tap(action, true)
+    ExecuteWithDelay(150, function() ExecuteInGameThread(function() IN.client_tap(action, false) end) end)
+end
+
+local function find_dirt_spot(pawn)
+    local vw
+    for _, v in ipairs(FindAllOf("VoxelWorld") or {}) do
+        if v:GetFName():ToString():find("EmberCradle", 1, true) then vw = v end
+    end
+    if not vw then return nil end
+    local c = vw:K2_GetActorLocation()
+    local mx, my = U.location(pawn)
+    local best, bd
+    for dx = -4000, 4000, 250 do
+        for dy = -4000, 4000, 250 do
+            local z, who = U.ground_z(c.X + dx, c.Y + dy, c.Z + 5000, c.Z - 5000)
+            if z and who and who:find("EmberCradle", 1, true) then
+                local d = (c.X + dx - mx) ^ 2 + (c.Y + dy - my) ^ 2
+                if not bd or d < bd then best, bd = { c.X + dx, c.Y + dy, z }, d end
+            end
+        end
+    end
+    return best
+end
+
+local function carrying_name(pc)
+    local n = "-"
+    pcall(function() local it = pc.CarryingItem; if it and it:IsValid() then n = it:GetFName():ToString() end end)
+    return n
+end
+
+local function items_bot_tick()
+    if cfg.bot ~= "items" or cfg.role ~= "client" or not S.active or not IT.client.snapshot then return end
+    local pawn, pc = U.local_pawn(), U.local_controller()
+    if not (pawn and pc) then return end
+    local t = os.clock()
+    if t < ib.at then return end
+    if ib.step == 0 then
+        ib_wait(4); ib.step = 1
+    elseif ib.step == 1 then
+        local best, bd
+        local x, y, z = U.location(pawn)
+        for _, s in ipairs(FindAllOf("BP_ShovelT1_C") or {}) do
+            if IT.alive(s) then
+                local sx, sy, sz = U.location(s)
+                local d = (sx - x) ^ 2 + (sy - y) ^ 2
+                if not bd or d < bd then best, bd = s, d end
+            end
+        end
+        if not best then U.log("BOT itens: nenhuma pa"); ib.step = 99; return end
+        ib.shovel = best:GetFName():ToString()
+        local sx, sy, sz = bounds_center(best)
+        pawn:K2_TeleportTo(U.vec(sx + 110, sy, sz + 90), { Pitch = 0, Yaw = 180, Roll = 0 })
+        ib.target = { sx, sy, sz }
+        U.log(("BOT itens: indo ate a pa %s"):format(ib.shovel))
+        ib_wait(1.5); ib.step = 2
+    elseif ib.step == 2 then
+        aim(pc, pawn, ib.target[1], ib.target[2], ib.target[3])
+        ib_wait(0.8); ib.step = 3
+    elseif ib.step == 3 then
+        tap("Pickup")
+        U.log(("BOT itens: E (pegar), o cliente esta olhando %s"):format(looking_at(pc)))
+        ib_wait(2.5); ib.step = 4
+    elseif ib.step == 4 then
+        U.log(("BOT itens: carregando agora %s (esperado %s)"):format(carrying_name(pc), ib.shovel))
+        ib.spot = find_dirt_spot(pawn)
+        if not ib.spot then U.log("BOT itens: sem ponto cavavel"); ib.step = 99; return end
+        local s = ib.spot
+        U.log(("BOT itens: ponto cavavel em %.0f %.0f %.0f"):format(s[1], s[2], s[3]))
+        pawn:K2_TeleportTo(U.vec(s[1] + 150, s[2], s[3] + 120), { Pitch = 0, Yaw = 180, Roll = 0 })
+        ib_wait(2); ib.step = 5
+    elseif ib.step == 5 then
+        aim(pc, pawn, ib.spot[1], ib.spot[2], ib.spot[3])
+        ib_wait(0.8); ib.step = 6
+    elseif ib.step == 6 then
+        ib.before = U.ground_z(ib.spot[1], ib.spot[2], ib.spot[3] + 500, ib.spot[3] - 500)
+        tap("LMB")
+        U.log(("BOT itens: clique (cavar), olhando %s, carregando %s"):format(looking_at(pc), carrying_name(pc)))
+        ib_wait(3.5); ib.step = 7
+    elseif ib.step == 7 then
+        local after = U.ground_z(ib.spot[1], ib.spot[2], ib.spot[3] + 500, ib.spot[3] - 500)
+        U.log(("BOT itens: chao no ponto antes %.1f depois %s; terreno recebido %d"):format(ib.before or -1,
+            after and ("%.1f"):format(after) or "?", S.stats.terrain_in))
+        aim(pc, pawn, ib.spot[1], ib.spot[2] + 150, ib.spot[3])
+        ib_wait(0.8); ib.step = 8
+    elseif ib.step == 8 then
+        tap("LMB")
+        U.log("BOT itens: clique (despejar)")
+        ib_wait(3.5); ib.step = 9
+    elseif ib.step == 9 then
+        local x, y, z = U.location(pawn)
+        local yaw = math.rad(pc:GetControlRotation().Yaw)
+        aim(pc, pawn, x + math.cos(yaw) * 150, y + math.sin(yaw) * 150, z - 120)
+        ib_wait(0.6); ib.step = 10
+    elseif ib.step == 10 then
+        tap("Pickup")
+        U.log("BOT itens: E (soltar)")
+        ib_wait(3); ib.step = 11
+    elseif ib.step == 11 then
+        U.log(("BOT itens: fim; carregando %s; terreno recebido %d; input enviado %d"):format(carrying_name(pc), S.stats.terrain_in, IN.stats.sent))
+        ib.step = 99
+    end
+end
+
+-- host bot=spawn: cria itens na frente do host durante a sessao, como uma compra ou uma venda faria
+local sb = { last = 0, n = 0 }
+local SPAWN_CLASSES = { "/Game/WorldObj/Items/BP_Bucket.BP_Bucket_C", "/Game/WorldObj/Items/BP_Pan.BP_Pan_C",
+                        "/Game/WorldObj/Items/BP_Coin.BP_Coin_C" }
+local function spawn_bot_tick()
+    if cfg.bot ~= "spawn" or cfg.role ~= "host" or not S.lobby then return end
+    local active = false
+    for _, p in pairs(S.peers) do if p.active then active = true end end
+    if not active or os.clock() - sb.last < 8 or sb.n >= 6 then return end
+    sb.last = os.clock()
+    sb.n = sb.n + 1
+    local pawn = U.local_pawn()
+    if not pawn then return end
+    local cp = SPAWN_CLASSES[(sb.n - 1) % #SPAWN_CLASSES + 1]
+    local cls = StaticFindObject(cp)
+    if not U.valid(cls) then
+        -- caminho real da classe: procura um item vivo dessa classe
+        local short = cp:match("%.([%w_]+)$")
+        local any = FindFirstOf(short)
+        if U.valid(any) then cls = any:GetClass() end
+    end
+    if not U.valid(cls) then U.log("BOT spawn: classe nao encontrada " .. cp); return end
+    local x, y, z = U.location(pawn)
+    local a
+    local ok, err = pcall(function() a = pawn:GetWorld():SpawnActor(cls, U.vec(x + 150, y + (sb.n - 3) * 60, z + 50), { Pitch = 0, Yaw = 0, Roll = 0 }) end)
+    if ok and U.valid(a) then
+        if cp:find("Coin", 1, true) then pcall(function() a:InitAmount(37 * sb.n, false) end) end
+        U.log(("BOT spawn: criado %s"):format(a:GetFName():ToString()))
+    else
+        U.log("BOT spawn: falhou " .. tostring(err))
+    end
+end
+
 -- ---------------------------------------------------------------- robos de teste (so com mp-config.txt)
 local bot = { digs = {}, last_dig = 0, t0 = nil, checked = false }
 
 local function bot_tick()
-    if cfg.bot == "none" or not U.in_game() then return end
+    if cfg.bot == "none" or cfg.bot == "items" or cfg.bot == "spawn" or not U.in_game() then return end
     local pawn, pc = U.local_pawn(), U.local_controller()
     if not pawn then return end
     local t = os.clock()
@@ -206,23 +377,28 @@ local function tick()
     end
 
     -- modo UDP de teste: entra ou abre a sala sozinho quando o jogo estiver carregado
-    if cfg.transport == "udp" and not state.auto_done and S.self and U.in_game() then
-        state.auto_done = true
+    if cfg.transport == "udp" and S.self and (U.in_game() or cfg.role ~= "host") and not S.lobby
+        and (not state.auto_done or (cfg.role ~= "host" and os.clock() - state.auto_t > 12)) then
+        state.auto_done, state.auto_t = true, os.clock()
         if cfg.role == "host" then mpnet.host(4) else mpnet.join(0) end
     end
 
     S.tick()
     bot_tick()
     mirror_tick()
+    items_bot_tick()
+    T.guarded(spawn_bot_tick)
 end
 
 local function safe_tick()
     if dead then return end
     local ok, e = pcall(tick)
     if not ok then
-        dead = true
-        U.log("ERRO Lua: " .. tostring(e))
-        if loop_handle and CancelDelayedAction then pcall(CancelDelayedAction, loop_handle) end
+        -- um erro num tick nao derruba a sessao: registra e segue
+        state.errors = (state.errors or 0) + 1
+        if state.errors <= 20 or state.errors % 100 == 0 then
+            U.log(("ERRO Lua (%d): %s"):format(state.errors, tostring(e)))
+        end
     end
 end
 
@@ -261,11 +437,36 @@ RegisterInitGameStatePostHook(function()
     local ok, e = mpnet.start(DLL, mode_line())
     if not ok then U.log("ERRO ao iniciar a ponte: " .. tostring(e)); return end
     ExecuteWithDelay(500, start_loop)
+    if cfg.continue and cfg.continue ~= "" then
+        -- teste: carrega um save sozinho e conta jogadores e itens (save gravado durante o co-op)
+        ExecuteWithDelay(8000, function()
+            ExecuteInGameThread(function()
+                local gm = U.game_mode()
+                pcall(function() StaticFindObject("/Script/EasyMultiSave.Default__EMSFunctionLibrary"):SetCurrentSaveGameName(gm, cfg.continue) end)
+                local okc, ec = pcall(function() gm:ContinueGame(false, false, false, cfg.continue) end)
+                U.log("continuar save " .. cfg.continue .. ": " .. (okc and "ok" or tostring(ec)))
+                ExecuteWithDelay(12000, function()
+                    ExecuteInGameThread(function()
+                        local pcs = FindAllOf("BP_GameController_C") or {}
+                        local lps = FindAllOf("LocalPlayer") or {}
+                        local chars = FindAllOf("BP_Character_HydroGuy_C") or {}
+                        local items = FindAllOf("BP_ParentItem_C") or {}
+                        U.log(("SAVE SOZINHO: em jogo %s, controladores %d, jogadores locais %d, personagens HydroGuy %d, itens %d"):format(
+                            tostring(U.in_game()), #pcs, #lps, #chars, #items))
+                        U.log("TESTE_FIM")
+                    end)
+                end)
+            end)
+        end)
+    end
     if cfg.newgame == "1" then
         ExecuteWithDelay(8000, function()
             ExecuteInGameThread(function()
                 local gi, gm = FindFirstOf("BP_GameInstance_C"), U.game_mode()
-                pcall(function() gi.SaveSlot = "MpTeste-" .. (cfg.role ~= "" and cfg.role or "x") end)
+                local slot = "MpTeste-" .. (cfg.role ~= "" and cfg.role or "x")
+                pcall(function() gi.SaveSlot = slot end)
+                -- NewGame usa o ultimo slot aberto; sem isto um teste sobrescreveria o MpHydroneerHost
+                pcall(function() StaticFindObject("/Script/EasyMultiSave.Default__EMSFunctionLibrary"):SetCurrentSaveGameName(gm, slot) end)
                 local okn, en = pcall(function() gm:NewGame() end)
                 U.log("jogo novo automatico: " .. (okn and "ok" or tostring(en)))
             end)

@@ -98,11 +98,23 @@ function U.ground_z(x, y, z_top, z_bottom)
             { R = 0, G = 0, B = 0, A = 0 }, { R = 0, G = 0, B = 0, A = 0 }, 0)
     end)
     if not ok or not r then return nil end
-    local okz, z = pcall(function()
+    local okz, z, who = pcall(function()
         local h = hit.OutHit or hit
-        return h.ImpactPoint and h.ImpactPoint.Z or h.Location.Z
+        local name = ""
+        pcall(function() local a = h.Actor and h.Actor:Get(); if a and a:IsValid() then name = a:GetFName():ToString() end end)
+        return h.ImpactPoint and h.ImpactPoint.Z or h.Location.Z, name
     end)
-    return okz and z or nil
+    if okz then return z, who end
+    return nil
+end
+
+-- Rotacao para olhar de (x, y, z) ate (tx, ty, tz)
+function U.look_at(x, y, z, tx, ty, tz)
+    local ok, r = pcall(function()
+        return StaticFindObject("/Script/Engine.Default__KismetMathLibrary"):FindLookAtRotation(U.vec(x, y, z), U.vec(tx, ty, tz))
+    end)
+    if ok and r then return { Pitch = r.Pitch, Yaw = r.Yaw, Roll = 0 } end
+    return nil
 end
 
 -- Densidade do voxel num ponto do mundo (negativo = solido, positivo = ar) e busca da superficie.

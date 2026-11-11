@@ -35,7 +35,8 @@ O host simula o mundo inteiro, inclusive um pawn oculto para cada amigo, usando 
 7. [Spike de verificação](docs/07-spike.md): o que foi medido dentro do jogo, com UE4SS.
 8. [mpnet](docs/08-mpnet.md): a ponte nativa com a Steam e o modo UDP de testes.
 9. [MpHydroneer](docs/09-mphydroneer.md): o mod de co-op, protocolo, testes e resultados.
-10. [Fontes](docs/99-fontes.md).
+10. [savesync](docs/10-savesync.md): entrada no mundo do host pela transferência do save.
+11. [Fontes](docs/99-fontes.md).
 
 ## Regras do repositório
 

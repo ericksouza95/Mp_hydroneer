@@ -36,7 +36,7 @@ Set-Content (Join-Path $f "ue4ss\Mods\mods.txt") "$Mod : 1" -Encoding ascii
 Set-Content (Join-Path $f "ue4ss\Mods\mods.json") "[ { `"mod_name`": `"$Mod`", `"mod_enabled`": true } ]" -Encoding ascii
 # Mod e ponte
 Copy-Item (Join-Path $root "mod\$Mod\Scripts\*.lua") (Join-Path $modDst "Scripts\")
-Copy-Item (Join-Path $root "lua\mpnet.lua") (Join-Path $modDst "Scripts\")
+Copy-Item (Join-Path $root "lua\*.lua") (Join-Path $modDst "Scripts\")   # bibliotecas compartilhadas
 Copy-Item $dll (Join-Path $modDst "native\")
 
 # Fim de linha do Windows nos .bat e .txt

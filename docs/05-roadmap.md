@@ -28,6 +28,12 @@ Saída do spike: atualização de `02-decisoes.md` nos pendentes, whitelist inic
 - Duas instâncias no mesmo PC, depois duas máquinas reais pela Steam.
 - Medição de RTT e perda pelo relay da Steam.
 
+## Estado em 2026-11-10, pacote 0.3
+
+- Marcos 1 a 5 feitos e testados entre duas instâncias por UDP: entrada pelo save do host, itens, ações do cliente no host, terreno, hora do dia, saída e reentrada.
+- Falta: teste pela Steam entre dois PCs com a 0.3, dois clientes ao mesmo tempo, e confirmar lavar, vender, comprar e dormir com jogadores.
+- Depois: sons das ações do cliente, veículos, construção, máquinas e canos.
+
 ## Estado em 2026-11-07, pacote 0.2
 
 - Marco 1: completo. Steam testado entre duas casas com o pacote 0.1; modo UDP local feito e testado.

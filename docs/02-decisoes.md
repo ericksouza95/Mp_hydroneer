@@ -134,6 +134,28 @@ Formato: número, data, decisão, motivo, consequências. Decisões podem ser re
 
 **Motivo.** Uma conta Steam por máquina impede testar dois jogadores pela Steam num PC.
 
+## D21. O cliente entra no mundo do host pelo save (2026-11-10)
+
+**Decisão.** Ao entrar, o cliente recebe o save do host e o carrega como `MpHydroneerHost`. O mundo do próprio cliente é salvo antes. Feito por um agente, em `lua/savesync.lua`; detalhes em `10-savesync.md`.
+
+**Motivo.** Terreno, itens e dinheiro precisam começar iguais. Depois de carregar o mesmo save, os nomes dos itens coincidem, o que permite associá-los.
+
+## D22. Ações do cliente executadas no host, com o alvo que o cliente via (2026-11-10)
+
+**Decisão.** Substitui a parte de D18 sobre o cliente aplicar as próprias escavações. O cliente não executa ações de mundo; manda tecla e alvo (item por id, objeto do mapa por caminho). O host aponta `LastThingLookingAt` do controlador oculto para o alvo e chama o evento de entrada.
+
+**Motivo.** A mira reproduzida no host erra por centímetros e não acerta itens pequenos; o alvo explícito acerta sempre. Um único caminho cobre pegar, cavar, lavar, comprar, vender e dormir.
+
+## D23. Terreno alterado numa ação do cliente vai como retalho de voxels (2026-11-10)
+
+**Decisão.** Se o hook acusa edição dentro da chamada do mod, o host lê um cubo de voxels ao redor do ponto da mira (13³ com voxel de 20 cm) e manda os valores; o cliente grava os que diferem.
+
+**Motivo.** A escavação da pá roda dentro do evento de clique, e ler parâmetros do hook ali derruba o jogo (D19). Copiar o resultado é exato e independe da ferramenta.
+
+## D24. Itens: host dono, cliente sem física (2026-11-10)
+
+**Decisão.** Itens do cliente não simulam física; seguem posições e estado do host. Associação pelo nome, com reserva por classe e posição.
+
 ## Pendentes
 
 - **Licença.** Precisa ser escolhida antes de receber contribuição externa. Sugestão: MIT, igual ao UE4SS e ao coop-anything.

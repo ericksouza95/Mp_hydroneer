@@ -36,8 +36,13 @@ end
 function M.start(dll_path, mode)
     if loaded then return true end
     local dir = dll_path:match("^(.*[/\\])") or ""
-    math.randomseed(os.time())
-    token = string.format("%d%06d", os.time(), math.random(0, 999999))
+    -- O token nomeia os pipes: precisa ser unico entre copias do jogo abertas no mesmo segundo.
+    -- Mistura o caminho da DLL e o endereco de uma tabela deste processo.
+    local h = 2166136261
+    local seed = dll_path .. tostring({}) .. tostring(os.clock())
+    for i = 1, #seed do h = ((h ~ seed:byte(i)) * 16777619) % 4294967296 end
+    math.randomseed(os.time() ~ h)
+    token = string.format("%d%08x%06d", os.time(), h, math.random(0, 999999))
     local f = io.open(dir .. "mpnet.token", "wb")
     if not f then err = "nao consegui escrever mpnet.token em " .. dir; return false, err end
     f:write(token)

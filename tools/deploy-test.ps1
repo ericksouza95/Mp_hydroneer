@@ -3,7 +3,7 @@
 #        [-Instance E:\hydroneer-qa\inst0] [-Config "transport=udp","role=host"] [-AutoTest]
 param(
     [string]$Instance = "E:\hydroneer-qa\inst0",
-    [ValidateSet("MpNetTest", "MpPing", "MpHydroneer")][string]$Mod = "MpHydroneer",
+    [ValidateSet("MpNetTest", "MpPing", "MpHydroneer", "MpSaveTest")][string]$Mod = "MpHydroneer",
     [string[]]$Config = @(),
     [switch]$AutoTest
 )
@@ -21,7 +21,7 @@ $dst = Join-Path $mods $Mod
 if (Test-Path (Join-Path $dst "Scripts")) { Remove-Item (Join-Path $dst "Scripts") -Recurse -Force }
 New-Item -ItemType Directory -Force (Join-Path $dst "Scripts"), (Join-Path $dst "native") | Out-Null
 Copy-Item (Join-Path $root "mod\$Mod\Scripts\*.lua") (Join-Path $dst "Scripts\") -Force
-Copy-Item (Join-Path $root "lua\mpnet.lua") (Join-Path $dst "Scripts\mpnet.lua") -Force
+Copy-Item (Join-Path $root "lua\*.lua") (Join-Path $dst "Scripts\") -Force   # bibliotecas compartilhadas
 Copy-Item $dll (Join-Path $dst "native\mpnet.dll") -Force
 Remove-Item (Join-Path $dst "mpnet-test.txt"), (Join-Path $dst "native\mpnet.log"), (Join-Path $dst "native\mpnet.token") -ErrorAction SilentlyContinue
 $flag = Join-Path $dst "autoteste.txt"
@@ -32,7 +32,7 @@ $Config = @($Config | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Tri
 if ($Config.Count -gt 0) { Set-Content $cfgFile $Config -Encoding ascii } else { Remove-Item $cfgFile -ErrorAction SilentlyContinue }
 
 # Exatamente um dos nossos mods ligado
-$ours = @("MpNetTest", "MpPing", "MpSpike", "MpHydroneer")
+$ours = @("MpNetTest", "MpPing", "MpSpike", "MpHydroneer", "MpSaveTest")
 $txt = Join-Path $mods "mods.txt"
 $lines = Get-Content $txt | Where-Object { $_ -notmatch ('^\s*(' + ($ours -join '|') + ')\s*:') }
 $head = $ours | ForEach-Object { "$_ : " + $(if ($_ -eq $Mod) { 1 } else { 0 }) }

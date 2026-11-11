@@ -14,10 +14,11 @@ if ($Instance -like "*steamapps*") { throw "recusado: $Instance parece a instala
 $w64 = Join-Path $Instance "Mining\Binaries\Win64"
 $exe = Join-Path $w64 "Mining-Win64-Shipping.exe"
 
-Get-Process Mining-Win64-Shipping, CrashReportClient -ErrorAction SilentlyContinue |
-    Where-Object { $_.Path -and $_.Path.StartsWith($Instance, [StringComparison]::OrdinalIgnoreCase) } |
-    ForEach-Object { Stop-Process -Id $_.Id -Force; Write-Host "encerrado $($_.ProcessName) $($_.Id)" }
-Start-Sleep -Milliseconds 1500
+$old = @(Get-Process Mining-Win64-Shipping, CrashReportClient -ErrorAction SilentlyContinue |
+    Where-Object { $_.Path -and $_.Path.StartsWith($Instance, [StringComparison]::OrdinalIgnoreCase) })
+foreach ($p in $old) { Stop-Process -Id $p.Id -Force; Write-Host "encerrado $($p.ProcessName) $($p.Id)" }
+foreach ($p in $old) { try { $p.WaitForExit(15000) | Out-Null } catch {} }
+Start-Sleep -Milliseconds 1000
 
 & (Join-Path $PSScriptRoot "deploy-test.ps1") -Instance $Instance -Mod $Mod -Config $Config
 if ($Dll) { Copy-Item $Dll (Join-Path $w64 "ue4ss\Mods\$Mod\native\mpnet.dll") -Force }
